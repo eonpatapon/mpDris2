@@ -38,7 +38,8 @@ params = {
     'host': 'localhost',
     'port': 6600,
     'password': None,
-    'progname': sys.argv[0]
+    'progname': sys.argv[0],
+    'music_dir': '',
 }
 
 ## END CONFIGURATION - DO NOT CHANGE ANYTHING BELOW THIS LINE ###
@@ -211,8 +212,8 @@ def FormatMetadata(metadata):
     if 'file' in metadata:
         file = metadata['file']
         # prepend path to library if it isn't a uri
-        #~ if len([ x for x in urlhandlers if file.startswith(x) ]) == 0:
-            #~ file = os.path.join(path, file)
+        if len([ x for x in urlhandlers if file.startswith(x) ]) == 0:
+            file = os.path.join(params['music_dir'], file)
         metadata['xesam:url'] = file
 
     if 'artist' in metadata:
@@ -579,7 +580,7 @@ if __name__ == '__main__':
             path = arg
 
     config = ConfigParser.SafeConfigParser()
-    config.read(['/etc/mpDris.conf', os.path.expanduser('~/.config/mpDris/mpDris.conf')])
+    config.read(['/etc/mpDris2.conf', os.path.expanduser('~/.config/mpDris/mpDris2.conf')])
 
     if config.has_option('Connection', 'host'):
         params['host'] = config.get('Connection', 'host')
@@ -611,7 +612,7 @@ if __name__ == '__main__':
         print 'Warning: By not supplying a path for the music library ' \
               'this program will break the MPRIS specification!'
     elif not path.startswith('file://'):
-        path = 'file://' + path
+        params['music_dir'] = 'file://' + path
 
     loop = gobject.MainLoop()
 
