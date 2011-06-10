@@ -13,7 +13,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Author: Erik Karlsson <pilo@ayeon.org>
+# Authors: Erik Karlsson <pilo@ayeon.org>, Jean-Philippe Braun <eon@patapon.info>
+# Some bits taken from quodlibet mpris plugin by <christoph.reiter@gmx.at>
 
 import os
 import sys
