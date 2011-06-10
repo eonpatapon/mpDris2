@@ -195,7 +195,8 @@ def FormatMetadata(metadata):
     """http://xmms2.org/wiki/MPRIS_Metadata"""
 
     metadata['mpris:trackid'] = "/org/mpris/MediaPlayer2/Track/%s" % metadata['id']
-    metadata['mpris:length'] = metadata['time']
+    if 'time' in metadata:
+        metadata['mpris:length'] = metadata['time']
 
     if 'date' in metadata:
         if len(metadata['date']) is 4:
