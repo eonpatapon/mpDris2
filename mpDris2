@@ -205,7 +205,10 @@ def FormatMetadata(metadata):
             metadata['xesam:contentCreated'] = metadata['date'][0:4]
 
     if 'track' in metadata:
-        metadata['xesam:trackNumber'] = int(re.match('^([0-9]+).*', metadata['track']).group(1))
+        if re.match('^([0-9]+).*', metadata['track']):
+            metadata['xesam:trackNumber'] = int(re.match('^([0-9]+).*', metadata['track']).group(1))
+        else:
+            metadata['xesam:trackNumber'] = 0
 
     if 'disc' in metadata:
         metadata['xesam:discNumber'] = int(re.match('^([0-9]+).*', metadata['disc']).group(1))
