@@ -190,6 +190,8 @@ MPRIS2_INTROSPECTION = \
 
 # Default url handlers if MPD doesn't support 'urlhandlers' command
 urlhandlers = [ 'http://' ]
+downloaded_covers = [ '.covers/%s-%s.jpg' ]
+local_covers = [ 'cover.jpg', 'album.jpg', 'front.jpg', 'folder.jpg', '.folder.jpg', '.folder.png', 'AlbumArt.jpg', 'AlbumArtSmall.jpg' ]
 
 def FormatMetadata(metadata):
     """http://xmms2.org/wiki/MPRIS_Metadata"""
@@ -213,13 +215,6 @@ def FormatMetadata(metadata):
     if 'disc' in metadata:
         metadata['xesam:discNumber'] = int(re.match('^([0-9]+).*', metadata['disc']).group(1))
 
-    if 'file' in metadata:
-        file = metadata['file']
-        # prepend path to library if it isn't a uri
-        if len([ x for x in urlhandlers if file.startswith(x) ]) == 0:
-            file = os.path.join(params['music_dir'], file)
-        metadata['xesam:url'] = file
-
     if 'artist' in metadata:
         metadata['xesam:artist'] = [metadata['artist'],]
 
@@ -230,6 +225,24 @@ def FormatMetadata(metadata):
     for tag in mpd_tags:
         if tag in metadata:
             metadata['xesam:%s' % tag] = metadata[tag]
+
+    if 'file' in metadata:
+        file = metadata['file']
+        if len([ x for x in urlhandlers if file.startswith(x) ]) == 0:
+            file = os.path.join(params['music_dir'], file)
+        metadata['xesam:url'] = file
+        basedirpath = os.path.dirname(file).replace('file://', '')
+        cover = False
+        for f in os.listdir(basedirpath):
+            if f in local_covers:
+                cover = 'file://' + os.path.join(basedirpath, f)
+        if not cover and 'artist' in metadata and 'album' in metadata:
+            for f in downloaded_covers:
+                f = os.path.expanduser(os.path.join('~', f % (metadata['artist'], metadata['album'])))
+                if os.path.exists(f):
+                    cover = 'file://' + f
+        if cover:
+            metadata['mpris:artUrl'] = cover
 
     # Stream: populate some missings tags with stream's name
     if 'name' in metadata:
