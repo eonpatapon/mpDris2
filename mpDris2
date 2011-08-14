@@ -198,7 +198,7 @@ def FormatMetadata(metadata):
 
     metadata['mpris:trackid'] = "/org/mpris/MediaPlayer2/Track/%s" % metadata['id']
     if 'time' in metadata:
-        metadata['mpris:length'] = metadata['time']
+        metadata['mpris:length'] = int(metadata['time']) * 1000000
 
     if 'date' in metadata:
         if len(metadata['date']) is 4:
@@ -292,8 +292,8 @@ class MPRISRoot(dbus.service.Object):
 
     __root_interface = "org.mpris.MediaPlayer2"
     __root_props = {
-        "CanQuit": (True, None),
-        "CanRaise": (True, None),
+        "CanQuit": (False, None),
+        "CanRaise": (False, None),
         "HasTrackList": (False, None),
         "Identity": ("Media Player Daemon", None),
         "SupportedUriSchemes": (dbus.Array(signature="s"), None),
