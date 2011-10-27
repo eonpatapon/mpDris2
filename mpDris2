@@ -297,7 +297,7 @@ class MPRISRoot(dbus.service.Object):
         "CanRaise": (False, None),
         "DesktopEntry": ("mpDris2", None),
         "HasTrackList": (False, None),
-        "Identity": ("Media Player Daemon", None),
+        "Identity": ("Music Player Daemon", None),
         "SupportedUriSchemes": (dbus.Array(signature="s"), None),
         "SupportedMimeTypes": (dbus.Array(signature="s"), None)
     }
