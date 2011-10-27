@@ -295,8 +295,9 @@ class MPRISRoot(dbus.service.Object):
     __root_props = {
         "CanQuit": (False, None),
         "CanRaise": (False, None),
+        "DesktopEntry": ("mpDris2", None),
         "HasTrackList": (False, None),
-        "Identity": ("Media Player Daemon", None),
+        "Identity": ("Music Player Daemon", None),
         "SupportedUriSchemes": (dbus.Array(signature="s"), None),
         "SupportedMimeTypes": (dbus.Array(signature="s"), None)
     }
