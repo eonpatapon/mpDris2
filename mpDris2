@@ -19,6 +19,7 @@
 import os
 import sys
 import re
+import shlex
 import signal
 import string
 import socket
@@ -568,6 +569,34 @@ def host_and_password(str):
     parts = str.partition('@')
     return (parts[2], parts[0])
 
+def find_music_dir():
+    if 'XDG_MUSIC_DIR' in os.environ:
+        return os.environ['XDG_MUSIC_DIR']
+
+    conf = os.path.expanduser('~/.config/user-dirs.dirs')
+    try:
+        for line in open(conf, 'r'):
+            if not line.startswith('XDG_MUSIC_DIR='):
+                continue
+            # use shlex to handle "shell escaping"
+            path = shlex.split(line)[0][14:]
+            if path.startswith('$HOME/'):
+                return os.path.expanduser('~' + path[5:])
+            elif path.startswith('/'):
+                return path
+            else:
+                continue # other forms are not supported
+    except IOError:
+        pass
+
+    paths = '~/Music', '~/music'
+    for path in map(os.path.expanduser, paths):
+        print "guessing", path
+        if os.path.isdir(path):
+            return path
+
+    return None
+
 def usage(dict):
     print """\
 Usage: %(progname)s [OPTION]... [MPD_HOST] [MPD_PORT]
@@ -584,7 +613,9 @@ Report bugs to <pilo@ayeon.org>""" % dict
 if __name__ == '__main__':
     DBusGMainLoop(set_as_default=True)
 
-    path = ''
+    path = find_music_dir()
+    if path:
+        print "Using", path, "as music directory"
 
     try:
         (opts, args) = getopt.getopt(sys.argv[1:], 'hp:', ['help', 'path='])
@@ -630,7 +661,7 @@ if __name__ == '__main__':
     if '@' in params['host']:
         (params['host'], params['password']) = host_and_password(params['host'])
 
-    if not len(path):
+    if not path:
         print 'Warning: By not supplying a path for the music library ' \
               'this program will break the MPRIS specification!'
     elif not path.startswith('file://'):
