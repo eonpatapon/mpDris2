@@ -614,8 +614,6 @@ if __name__ == '__main__':
     DBusGMainLoop(set_as_default=True)
 
     path = find_music_dir()
-    if path:
-        print "Using", path, "as music directory"
 
     try:
         (opts, args) = getopt.getopt(sys.argv[1:], 'hp:', ['help', 'path='])
@@ -661,11 +659,13 @@ if __name__ == '__main__':
     if '@' in params['host']:
         (params['host'], params['password']) = host_and_password(params['host'])
 
-    if not path:
+    if path:
+        print 'Using %s as music library path' % path
+        if not path.startswith('file://'):
+            params['music_dir'] = 'file://' + path
+    else:
         print 'Warning: By not supplying a path for the music library ' \
               'this program will break the MPRIS specification!'
-    elif not path.startswith('file://'):
-        params['music_dir'] = 'file://' + path
 
     loop = gobject.MainLoop()
 
