@@ -31,6 +31,7 @@ import dbus
 import dbus.service
 from dbus.mainloop.glib import DBusGMainLoop
 import ConfigParser
+import pynotify
 
 ### BEGIN CONFIGURATION ###
 
@@ -41,9 +42,13 @@ params = {
     'password': None,
     'progname': sys.argv[0],
     'music_dir': '',
+    'mmkeys': True,
+    'notify': True,
 }
 
 ## END CONFIGURATION - DO NOT CHANGE ANYTHING BELOW THIS LINE ###
+
+notification = None
 
 # MPRIS allowed metadata tags
 allowed_tags = {
@@ -511,6 +516,22 @@ def handle_sigint(signum, frame):
     print 'Caught SIGINT, aborting.'
     loop.quit()
 
+# issue libnotify on song change
+def submit_notification(song):
+    FormatMetadata(song)
+    # Image URI
+    uri = "media"
+    if 'mpris-artUrl' in song:
+        uri = song['mpris:artUrl']
+    else:
+        uri = 'media-audio'
+
+    notification.update(song['xesam:title'], song['xesam:artist'][0], uri)
+    notification.set_timeout(pynotify.EXPIRES_DEFAULT)
+    if not notification.show():
+        print 'Failed to send notification. Turning them off.'
+        params['notify'] = False
+
 # Periodic status check function
 def check_mpd_status(mpd_client, host, port, password, root):
     # TODO: This should perhaps be exception-checked?
@@ -519,6 +540,7 @@ def check_mpd_status(mpd_client, host, port, password, root):
     # Invalidate some fields, so that we throw out events at start
     status['state'] = 'invalid'
     status['songid'] = -1
+    notify = params['notify'];
 
     song = mpd_client.currentsong()
     is_stream = 'name' in song
@@ -550,6 +572,8 @@ def check_mpd_status(mpd_client, host, port, password, root):
         if status['state'] != 'stop' and old_status['state'] != 'stop':
             if old_status['songid'] != status['songid']:
                 root.update_property('org.mpris.MediaPlayer2.Player', 'Metadata')
+                if notify:
+                    submit_notification(mpd_client.currentsong())
 
         if old_status['volume'] != status['volume']:
             root.update_property('org.mpris.MediaPlayer2.Player', 'Volume')
@@ -565,6 +589,28 @@ def check_mpd_status(mpd_client, host, port, password, root):
 
 
         yield status
+
+# handle gnome media-keys
+def on_mediakey(comes_from, what):
+    """
+    gets called when multimedia keys are pressed down.
+    """
+    print 'Got gnome mmkey: ' + str(what)
+    if what == 'Stop':
+        mpd_wrapper.stop()
+    elif what in ['Play','Pause','PlayPause']:
+        status = mpd_wrapper.status()
+        if status['state'] == 'play':
+            mpd_wrapper.pause(1)
+        else:
+            mpd_wrapper.play()
+            mpd_wrapper.pause(0)
+    elif what == 'Next':
+        mpd_wrapper.next()
+    elif what == 'Previous':
+        mpd_wrapper.previous()
+    else:
+        print ('But was not handled.')
 
 def host_and_password(str):
     parts = str.partition('@')
@@ -668,6 +714,11 @@ if __name__ == '__main__':
         print 'Warning: By not supplying a path for the music library ' \
               'this program will break the MPRIS specification!'
 
+    for bling in ['mmkeys','notify']:
+        if config.has_option('Bling', bling):
+            params[bling] = config.get('Bling', bling)
+
+
     loop = gobject.MainLoop()
 
     signal.signal(signal.SIGINT, handle_sigint)
@@ -703,6 +754,31 @@ if __name__ == '__main__':
 
     # Add periodic status check for MPRIS signals
     gobject.timeout_add(1000, check_mpd_status(mpd_client, params['host'], params['port'], params['password'], root).next)
+
+    # init mmkeys, if configured    
+    if params['mmkeys']:
+        try:
+            bus_object = session_bus.get_object('org.gnome.SettingsDaemon', '/org/gnome/SettingsDaemon/MediaKeys')
+         
+            # this is what gives us the multi media keys.
+            dbus_interface='org.gnome.SettingsDaemon.MediaKeys'
+            bus_object.GrabMediaPlayerKeys("mpDris2", 0, dbus_interface=dbus_interface)
+         
+            # connect_to_signal registers our callback function.
+            bus_object.connect_to_signal('MediaPlayerKeyPressed', on_mediakey)
+        except:
+            print 'Error: mmkeys init failed - will continue without media keys support.'
+            params['mmkeys'] = False
+
+    # init libnotify, if configured
+    if params['notify']:
+        if not pynotify.init("mpDris2"):
+            print 'Error: libnotify init failed - will continue without notifications.'
+            params['notify'] = False
+        else:
+            notification = pynotify.Notification("", "", "")
+
+
 
     # Run idle loop
     loop.run()
