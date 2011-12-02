@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/env python
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -31,7 +31,6 @@ import dbus
 import dbus.service
 from dbus.mainloop.glib import DBusGMainLoop
 import ConfigParser
-import pynotify
 
 ### BEGIN CONFIGURATION ###
 
@@ -47,6 +46,11 @@ params = {
 }
 
 ## END CONFIGURATION - DO NOT CHANGE ANYTHING BELOW THIS LINE ###
+
+try:
+    import pynotify
+except:
+    params['notify'] = False
 
 notification = None
 
@@ -678,7 +682,7 @@ if __name__ == '__main__':
             path = arg
 
     config = ConfigParser.SafeConfigParser()
-    config.read(['/etc/mpDris2.conf', os.path.expanduser('~/.config/mpDris/mpDris2.conf')])
+    config.read(['/etc/mpDris2.conf', os.path.expanduser('~/.config/mpDris2/mpDris2.conf')])
 
     if config.has_option('Connection', 'host'):
         params['host'] = config.get('Connection', 'host')
