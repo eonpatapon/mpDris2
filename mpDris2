@@ -32,9 +32,6 @@ import dbus.service
 from dbus.mainloop.glib import DBusGMainLoop
 import ConfigParser
 
-### BEGIN CONFIGURATION ###
-
-# Default parameters, change these to change default behaviour
 params = {
     'host': 'localhost',
     'port': 6600,
@@ -44,8 +41,6 @@ params = {
     'mmkeys': True,
     'notify': True,
 }
-
-## END CONFIGURATION - DO NOT CHANGE ANYTHING BELOW THIS LINE ###
 
 try:
     import pynotify
