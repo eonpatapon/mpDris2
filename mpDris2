@@ -429,37 +429,39 @@ class MPRISRoot(dbus.service.Object):
 
     def update_property(self, interface, prop):
         getter, setter = self.__prop_mapping[interface][prop]
-        if callable(getter): value = getter()
-        else: value = getter
-        print "Updated prop : %s (%s)" % (prop, str(value))
+        if callable(getter):
+            value = getter()
+        else:
+            value = getter
+        print 'Updated property: %s = %s' % (prop, value)
         self.PropertiesChanged(interface, {prop: value}, [])
 
     # Root methods
-    @dbus.service.method(__root_interface, in_signature = '', out_signature = '')
+    @dbus.service.method(__root_interface, in_signature='', out_signature='')
     def Raise(self):
         return
 
-    @dbus.service.method(__root_interface, in_signature = '', out_signature = '')
+    @dbus.service.method(__root_interface, in_signature='', out_signature='')
     def Quit(self):
         return
 
     # Player methods
-    @dbus.service.method(__player_interface, in_signature = '', out_signature = '')
+    @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Next(self):
         mpd_wrapper.next()
         return
 
-    @dbus.service.method(__player_interface, in_signature = '', out_signature = '')
+    @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Previous(self):
         mpd_wrapper.previous()
         return
 
-    @dbus.service.method(__player_interface, in_signature = '', out_signature = '')
+    @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Pause(self):
         mpd_wrapper.pause()
         return
 
-    @dbus.service.method(__player_interface, in_signature = '', out_signature = '')
+    @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def PlayPause(self):
         status = mpd_wrapper.status()
         if status['state'] == 'play':
@@ -468,17 +470,17 @@ class MPRISRoot(dbus.service.Object):
             mpd_wrapper.play()
         return
 
-    @dbus.service.method(__player_interface, in_signature = '', out_signature = '')
+    @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Stop(self):
         mpd_wrapper.stop()
         return
 
-    @dbus.service.method(__player_interface, in_signature = '', out_signature = '')
+    @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Play(self):
         mpd_wrapper.play()
         return
 
-    @dbus.service.method(__player_interface, in_signature = 'x', out_signature = '')
+    @dbus.service.method(__player_interface, in_signature='x', out_signature='')
     def Seek(self, offset):
         status = mpd_wrapper.status()
         current, end = status['time'].split(':')
@@ -491,11 +493,11 @@ class MPRISRoot(dbus.service.Object):
             mpd_wrapper.seekid(int(status['songid']), pos)
         return
 
-    @dbus.service.signal(__player_interface, signature="x")
+    @dbus.service.signal(__player_interface, signature='x')
     def Seeked(self, position):
         return float(position)
 
-    @dbus.service.method(__player_interface, in_signature = 'ox', out_signature = '')
+    @dbus.service.method(__player_interface, in_signature='ox', out_signature='')
     def SetPosition(self, trackid, position):
         song = mpd_wrapper.currentsong()
         # FIXME: use real dbus objects
@@ -507,7 +509,7 @@ class MPRISRoot(dbus.service.Object):
             self.Seeked(position * 1000000)
         return
 
-    @dbus.service.method(__player_interface, in_signature = '', out_signature = '')
+    @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def OpenUri(self):
         # TODO
         return
@@ -515,7 +517,7 @@ class MPRISRoot(dbus.service.Object):
 
 # Handle signals more gracefully
 def handle_sigint(signum, frame):
-    print 'Caught SIGINT, aborting.'
+    print 'Caught SIGINT, exiting.'
     loop.quit()
 
 # issue libnotify on song change
@@ -533,7 +535,7 @@ def submit_notification(song):
     notification.update(title, body, uri)
     notification.set_timeout(pynotify.EXPIRES_DEFAULT)
     if not notification.show():
-        print 'Failed to send notification. Turning them off.'
+        print 'Error: failed to show notification; disabling.'
         params['notify'] = False
 
 # Periodic status check function
@@ -591,30 +593,23 @@ def check_mpd_status(mpd_client, host, port, password, root):
         if old_status['repeat'] != status['repeat']:
             root.update_property('org.mpris.MediaPlayer2.Player', 'LoopStatus')
 
-
         yield status
 
-# handle gnome media-keys
-def on_mediakey(comes_from, what):
-    """
-    gets called when multimedia keys are pressed down.
-    """
-    print 'Got gnome mmkey: ' + str(what)
-    if what == 'Stop':
-        mpd_wrapper.stop()
-    elif what in ['Play','Pause','PlayPause']:
+# GNOME media key handler
+def on_mediakey(appname, key):
+    print 'Got GNOME mmkey "%s" for "%s"' % (key, appname)
+    if key == 'Play':
         status = mpd_wrapper.status()
         if status['state'] == 'play':
-            mpd_wrapper.pause(1)
+            mpd_wrapper.pause()
         else:
             mpd_wrapper.play()
-            mpd_wrapper.pause(0)
-    elif what == 'Next':
+    elif key == 'Next':
         mpd_wrapper.next()
-    elif what == 'Previous':
+    elif key == 'Previous':
         mpd_wrapper.previous()
-    else:
-        print ('But was not handled.')
+    elif key == 'Stop':
+        mpd_wrapper.stop()
 
 def host_and_password(str):
     parts = str.partition('@')
@@ -641,14 +636,14 @@ def find_music_dir():
         pass
 
     paths = '~/Music', '~/music'
+    print "Trying to guess music dir: %s" % paths
     for path in map(os.path.expanduser, paths):
-        print "guessing", path
         if os.path.isdir(path):
             return path
 
     return None
 
-def usage(dict):
+def usage():
     print """\
 Usage: %(progname)s [OPTION]... [MPD_HOST] [MPD_PORT]
 
@@ -659,7 +654,7 @@ Note: Environment variables MPD_HOST and MPD_PORT can be used instead of above
 
 Default: MPD_HOST: %(host)s, MPD_PORT: %(port)s
 
-Report bugs to <pilo@ayeon.org>""" % dict
+Report bugs to <pilo@ayeon.org>""" % params
 
 if __name__ == '__main__':
     DBusGMainLoop(set_as_default=True)
@@ -671,7 +666,7 @@ if __name__ == '__main__':
     except getopt.GetoptError, (msg, opt):
         print sys.argv[0] + ': ' + msg
         print
-        usage(params)
+        usage()
         sys.exit(2)
 
     for (opt, arg) in opts:
@@ -759,30 +754,27 @@ if __name__ == '__main__':
     # Add periodic status check for MPRIS signals
     gobject.timeout_add(1000, check_mpd_status(mpd_client, params['host'], params['port'], params['password'], root).next)
 
-    # init mmkeys, if configured    
+    # init mmkeys, if configured
     if params['mmkeys']:
         try:
-            bus_object = session_bus.get_object('org.gnome.SettingsDaemon', '/org/gnome/SettingsDaemon/MediaKeys')
-         
+            gsd_object = session_bus.get_object('org.gnome.SettingsDaemon', '/org/gnome/SettingsDaemon/MediaKeys')
+
             # this is what gives us the multi media keys.
-            dbus_interface='org.gnome.SettingsDaemon.MediaKeys'
-            bus_object.GrabMediaPlayerKeys("mpDris2", 0, dbus_interface=dbus_interface)
-         
+            gsd_object.GrabMediaPlayerKeys('mpDris2', 0, dbus_interface='org.gnome.SettingsDaemon.MediaKeys')
+
             # connect_to_signal registers our callback function.
-            bus_object.connect_to_signal('MediaPlayerKeyPressed', on_mediakey)
+            gsd_object.connect_to_signal('MediaPlayerKeyPressed', on_mediakey)
         except:
-            print 'Error: mmkeys init failed - will continue without media keys support.'
+            print 'Error: failed to connect to GNOME Settings Daemon; disabling multimedia key support'
             params['mmkeys'] = False
 
     # init libnotify, if configured
     if params['notify']:
-        if not pynotify.init("mpDris2"):
-            print 'Error: libnotify init failed - will continue without notifications.'
-            params['notify'] = False
-        else:
+        if pynotify.init("mpDris2"):
             notification = pynotify.Notification("", "", "")
-
-
+        else:
+            print 'Error: failed to init libnotify; disabling notifications'
+            params['notify'] = False
 
     # Run idle loop
     loop.run()
