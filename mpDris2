@@ -720,7 +720,7 @@ if __name__ == '__main__':
 
     for bling in ['mmkeys','notify']:
         if config.has_option('Bling', bling):
-            params[bling] = config.get('Bling', bling)
+            params[bling] = config.getboolean('Bling', bling)
 
 
     loop = gobject.MainLoop()
