@@ -519,11 +519,10 @@ def handle_sigint(signum, frame):
 def submit_notification(song):
     FormatMetadata(song)
     # Image URI
-    uri = "media"
-    if 'mpris-artUrl' in song:
+    if 'mpris:artUrl' in song:
         uri = song['mpris:artUrl']
     else:
-        uri = 'media-audio'
+        uri = 'sound'
 
     notification.update(song['xesam:title'], song['xesam:artist'][0], uri)
     notification.set_timeout(pynotify.EXPIRES_DEFAULT)
