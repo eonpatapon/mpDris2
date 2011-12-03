@@ -524,7 +524,10 @@ def submit_notification(song):
     else:
         uri = 'sound'
 
-    notification.update(song['xesam:title'], song['xesam:artist'][0], uri)
+    title = song['xesam:title']
+    body = 'by %s' % song['xesam:artist'][0]
+
+    notification.update(title, body, uri)
     notification.set_timeout(pynotify.EXPIRES_DEFAULT)
     if not notification.show():
         print 'Failed to send notification. Turning them off.'
