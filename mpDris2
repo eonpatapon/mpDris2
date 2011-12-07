@@ -190,6 +190,21 @@ MPRIS2_INTROSPECTION = \
       <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="false"/>
     </property>
   </interface>
+  <interface name='org.mpris.MediaPlayer2.Playlists'>
+    <method name='ActivatePlaylist'>
+      <arg direction='in' name='PlaylistId' type='o'/>
+    </method>
+    <method name='GetPlaylists'>
+      <arg direction='in' name='Index' type='u'/>
+      <arg direction='in' name='MaxCount' type='u'/>
+      <arg direction='in' name='Order' type='s'/>
+      <arg direction='in' name='ReverseOrder' type='b'/>
+      <arg direction='out' name='Playlists' type='a(oss)'/>
+    </method>
+    <property name='PlaylistCount' type='u' access='read'/>
+    <property name='Orderings' type='as' access='read'/>
+    <property name='ActivePlaylist' type='(b(oss))' access='read'/>
+  </interface>
 </node>"""
 
 
@@ -380,14 +395,31 @@ class MPRISRoot(dbus.service.Object):
         "CanPlay": (True, None),
         "CanPause": (True, None),
         "CanSeek": (True, None),
-        "CanControl": (True, None),
-    }
+        "CanControl": (True, None)
+	}
 
-    __tracklist_interface = "org.mpris.MediaPlayer2.TrackList"
+    # __tracklist_interface = "org.mpris.MediaPlayer2.TrackList"
+	# TODO Implement TrackList
+
+	def __get_playlist_count():
+		return len(mpd_wrapper.listplaylists())
+
+	def __get_active_playlist():
+		return mpd_wrapper.playlist()
+
+    __playlists_interface = "org.mpris.MediaPlayer2.Playlists"
+    __playlists_props = {
+		"PlaylistCount": (__get_playlist_count, None),
+		"Orderings": (('UserDefined'), None),
+		"ActivePlaylist": (__get_active_playlist, None),
+	}
 
     __prop_mapping = {
         __player_interface: __player_props,
-        __root_interface: __root_props}
+        __root_interface: __root_props,
+        #~ __tracklist_interface: __tracklist_props,
+        __playlists_interface: __playlists_props,
+    }
 
 
     def __init__(self, bus, path = ""):
@@ -508,6 +540,22 @@ class MPRISRoot(dbus.service.Object):
     def OpenUri(self):
         # TODO
         return
+
+    # Playlists methods
+    @dbus.service.method(__playlists_interface, in_signature = 'o', out_signature = '')
+    def ActivatePlaylist(self, playlist):
+		mpd_client.stop()
+		mpd_client.clear()
+		mpd_client.load(playlist)
+		mpd_client.play()
+		return
+
+    @dbus.service.method(__playlists_interface, in_signature = 'uusb', out_signature = 'a(oss)')
+    def GetPlaylists(self, index, maxcount, order, reverseorder):
+		playlists = mpd_client.listplaylists()
+		for playlist in playlists:
+			pass
+		return playlists
 
 
 # Handle signals more gracefully
