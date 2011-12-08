@@ -396,29 +396,29 @@ class MPRISRoot(dbus.service.Object):
         "CanPause": (True, None),
         "CanSeek": (True, None),
         "CanControl": (True, None)
-	}
+    }
 
     # __tracklist_interface = "org.mpris.MediaPlayer2.TrackList"
-	# TODO Implement TrackList
+    # TODO Implement TrackList
 
-	def __get_playlist_count():
-		return len(mpd_wrapper.listplaylists())
+    def __get_playlist_count():
+        return len(mpd_wrapper.listplaylists())
 
-	def __get_active_playlist():
-		return mpd_wrapper.playlist()
+    def __get_active_playlist():
+        return mpd_wrapper.playlist()
 
     __playlists_interface = "org.mpris.MediaPlayer2.Playlists"
     __playlists_props = {
-		"PlaylistCount": (__get_playlist_count, None),
-		"Orderings": (('UserDefined'), None),
-		"ActivePlaylist": (__get_active_playlist, None),
-	}
+        "PlaylistCount": (__get_playlist_count, None),
+        "Orderings": (('UserDefined'), None),
+        "ActivePlaylist": (__get_active_playlist, None),
+    }
 
     __prop_mapping = {
         __player_interface: __player_props,
         __root_interface: __root_props,
         #~ __tracklist_interface: __tracklist_props,
-        __playlists_interface: __playlists_props,
+        #~ __playlists_interface: __playlists_props,
     }
 
 
@@ -544,18 +544,18 @@ class MPRISRoot(dbus.service.Object):
     # Playlists methods
     @dbus.service.method(__playlists_interface, in_signature = 'o', out_signature = '')
     def ActivatePlaylist(self, playlist):
-		mpd_client.stop()
-		mpd_client.clear()
-		mpd_client.load(playlist)
-		mpd_client.play()
-		return
+        mpd_client.stop()
+        mpd_client.clear()
+        mpd_client.load(playlist)
+        mpd_client.play()
+        return
 
     @dbus.service.method(__playlists_interface, in_signature = 'uusb', out_signature = 'a(oss)')
     def GetPlaylists(self, index, maxcount, order, reverseorder):
-		playlists = mpd_client.listplaylists()
-		for playlist in playlists:
-			pass
-		return playlists
+        playlists = mpd_client.listplaylists()
+        for playlist in playlists:
+            pass
+        return playlists
 
 
 # Handle signals more gracefully
@@ -572,8 +572,16 @@ def submit_notification(song):
     else:
         uri = 'sound'
 
-    title = song['xesam:title']
-    body = 'by %s' % song['xesam:artist'][0]
+    if 'xesam:title' in song:
+        title = song['xesam:title']
+    else:
+        title = '(Unknown)'
+
+    if 'xesam:artist' in song:
+        artist = song['xesam:artist'][0]
+    else:
+        artist = '(Unknown)'
+    body = 'by %s' % artist
 
     notification.update(title, body, uri)
     notification.set_timeout(pynotify.EXPIRES_DEFAULT)
