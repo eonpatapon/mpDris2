@@ -389,7 +389,6 @@ class MPRISRoot(dbus.service.Object):
         __player_interface: __player_props,
         __root_interface: __root_props}
 
-
     def __init__(self, bus, path = ""):
         self.path = path
         dbus.service.Object.__init__(self, bus, "/org/mpris/MediaPlayer2")
@@ -494,14 +493,18 @@ class MPRISRoot(dbus.service.Object):
 
     @dbus.service.signal(__player_interface, signature="x")
     def Seeked(self, position):
-        pass
+        return float(position)
 
     @dbus.service.method(__player_interface, in_signature = 'ox', out_signature = '')
     def SetPosition(self, trackid, position):
         song = mpd_wrapper.currentsong()
-        if int(trackid) != int(song['id']): return
-        if int(position) <= int(song['time']):
-            mpd_wrapper.seekid(int(song['id']), int(position) / 1000)
+        # FIXME: use real dbus objects
+        if str(trackid) != '/org/mpris/MediaPlayer2/Track/%s' % song['id']: return
+        # Convert position to seconds
+        position = int(position) / 1000000
+        if position <= int(song['time']):
+            mpd_wrapper.seekid(int(song['id']), position)
+            self.Seeked(position * 1000000)
         return
 
     @dbus.service.method(__player_interface, in_signature = '', out_signature = '')
