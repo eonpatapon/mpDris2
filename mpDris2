@@ -354,7 +354,7 @@ class MPRISRoot(dbus.service.Object):
         status = mpd_wrapper.status()
         if 'time' in status:
             current, end = status['time'].split(':')
-            return int(current) * 1000
+            return int(current) * 1000000
         else:
             return 0
 
