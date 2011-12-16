@@ -52,7 +52,7 @@ notification = None
 # MPRIS allowed metadata tags
 allowed_tags = {
     'mpris:trackid': str,
-    'mpris:length': int,
+    'mpris:length': long,
     'mpris:artUrl': str,
     'xesam:album': str,
     'xesam:albumArtist': list,
