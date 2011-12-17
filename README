@@ -1,0 +1,22 @@
+# mpDris2
+
+mpDris2 provide MPRIS 2 support to mpd (Music Play Daemon).
+
+mpDris2 is run in the user session and monitors a local or distant mpd server.
+
+# Installation
+
+  git clone git://github.com/eonpatapon/mpDris2.git
+  cd mpDris2
+  ./autogen.sh
+  make
+  make install
+
+Logout/login from your session.
+
+# Configuration
+
+By default, mpDris2 will try to connect to localhost:6600.
+
+To set a different host or port copy the example configuration file 
+/usr/[local]/share/doc/mpdris2/mpDris2.conf to ~/.config/mpDris2.conf
