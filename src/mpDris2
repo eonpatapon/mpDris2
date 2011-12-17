@@ -32,7 +32,7 @@ import ConfigParser
 
 import logging
 logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', 
-    level=logging.INFO)
+    level=logging.DEBUG)
 logger = logging.getLogger('mpDris2')
 
 params = {
@@ -275,21 +275,83 @@ def FormatMetadata(metadata):
 
 
 # Wrapper to handle socket errors and similar
-class MPDWrapper:
-    def __init__(self, mpd_client):
-        self.__mpd_client = mpd_client
+class MPDWrapper(mpd.MPDClient):
 
-    def __getattr__(self, name):
-        try:
-            result = getattr(self.__mpd_client, name)
-        except (socket.error, mpd.MPDError):
-            self.__mpd_client.disconnect()
-            raise dbus.DBusException
+    def __init__(self, dbus, params):
+        mpd.MPDClient.__init__(self)
+        self._dbus = dbus
+        self._params = params
+        self.my_connect()
 
-        return result
+    def my_connect(self):
+        # Init MPD connection
+        while True:
+            try:
+                self._reset()
+                self.connect(self._params['host'], self._params['port'])
+                if params['password']:
+                    self.password(self._params['password'])
+            except socket.error as e:
+                logger.error('Fatal: Could not connect to MPD: ' + str(e))
+            except mpd.CommandError as e:
+                logger.error('Fatal: MPD command error: ' + str(e))
+            break
 
+        # Get URL handlers supported by MPD
+        if 'urlhandlers' in self.commands():
+            urlhandlers = self.urlhandlers()
 
-class MPRISRoot(dbus.service.Object):
+        return True
+
+    def monitor(self):
+        # Get current state
+        status = self.status()
+        # Invalid some fields to throw events at start
+        status['state'] = 'invalid'
+        status['songid'] = '-1'
+        position = 0
+        # Should we send notifications ?
+        notify = self._params['notify'];
+
+        while True:
+            old_status = status
+            old_position = position
+            try:
+                status = self.status()
+                if 'time' in status:
+                    position = int(status['time'].split(':')[0])
+                else:
+                    position = 0
+            except (socket.error, mpd.MPDError):
+                # Command, failed - try to reconnect
+                self.my_connect()
+
+            if status['state'] != 'stop' and old_status['state'] != 'stop':
+                if old_status['songid'] != status['songid']:
+                    self._dbus.update_property('org.mpris.MediaPlayer2.Player', 'Metadata')
+                    if notify:
+                        submit_notification(self.currentsong())
+
+            if old_status['volume'] != status['volume']:
+                self._dbus.update_property('org.mpris.MediaPlayer2.Player', 'Volume')
+
+            if old_status['state'] != status['state']:
+                self._dbus.update_property('org.mpris.MediaPlayer2.Player', 'PlaybackStatus')
+
+            if old_status['random'] != status['random']:
+                self._dbus.update_property('org.mpris.MediaPlayer2.Player', 'Shuffle')
+
+            if old_status['repeat'] != status['repeat']:
+                self._dbus.update_property('org.mpris.MediaPlayer2.Player', 'LoopStatus')
+
+            if (abs(position - old_position) > 2 and \
+               old_status['songid'] == status['songid']) or \
+               old_status['songid'] == '-1':
+                self._dbus.Seeked(position * 1000000)
+
+            yield status
+
+class MPRISInterface(dbus.service.Object):
     ''' The base object of an MPRIS player '''
 
     __path = "/org/mpris/MediaPlayer2"
@@ -515,7 +577,6 @@ class MPRISRoot(dbus.service.Object):
         # TODO
         return
 
-
 # Handle signals more gracefully
 def handle_sigint(signum, frame):
     logger.info('Caught SIGINT, exiting.')
@@ -539,63 +600,6 @@ def submit_notification(song):
         logger.error("Failed to show notification, disabling.")
         params['notify'] = False
 
-# Periodic status check function
-def check_mpd_status(mpd_client, host, port, password, root):
-    # TODO: This should perhaps be exception-checked?
-    status = mpd_client.status()
-    position = 0
-
-    # Should we send notifications ?
-    notify = params['notify'];
-
-    while True:
-        old_status = status
-        old_position = position
-        try:
-            status = mpd_client.status()
-            position = int(status['time'].split(':')[0])
-        except (socket.error, mpd.MPDError):
-            # Command, failed - try to reconnect
-            while True:
-                try:
-                    # Clean out any bad socket FDs before trying to connect..
-                    # this might leave stray FDs!
-                    mpd_client._reset()
-                    mpd_client.connect(host, port)
-                    if password:
-                        mpd_client.password(password)
-                except (socket.error, mpd.MPDError):
-                    yield old_status
-                    # Retry..
-                    continue
-                break
-            # Successful reconnection
-            pass
-
-        if status['state'] != 'stop' and old_status['state'] != 'stop':
-            if old_status['songid'] != status['songid']:
-                root.update_property('org.mpris.MediaPlayer2.Player', 'Metadata')
-                if notify:
-                    submit_notification(mpd_client.currentsong())
-
-        if old_status['volume'] != status['volume']:
-            root.update_property('org.mpris.MediaPlayer2.Player', 'Volume')
-
-        if old_status['state'] != status['state']:
-            root.update_property('org.mpris.MediaPlayer2.Player', 'PlaybackStatus')
-
-        if old_status['random'] != status['random']:
-            root.update_property('org.mpris.MediaPlayer2.Player', 'Shuffle')
-
-        if old_status['repeat'] != status['repeat']:
-            root.update_property('org.mpris.MediaPlayer2.Player', 'LoopStatus')
-
-        if abs(position - old_position) > 2 and \
-           old_status['songid'] == status['songid']:
-            root.Seeked(position * 1000000)
-
-        yield status
-
 # GNOME media key handler
 def on_mediakey(appname, key):
     logger.debug('Got GNOME mmkey "%s" for "%s"' % (key, appname))
@@ -611,10 +615,6 @@ def on_mediakey(appname, key):
         mpd_wrapper.previous()
     elif key == 'Stop':
         mpd_wrapper.stop()
-
-def host_and_password(str):
-    parts = str.partition('@')
-    return (parts[2], parts[0])
 
 def find_music_dir():
     if 'XDG_MUSIC_DIR' in os.environ:
@@ -702,7 +702,7 @@ if __name__ == '__main__':
             params['host'] = arg
 
     if '@' in params['host']:
-        (params['host'], params['password']) = host_and_password(params['host'])
+        params['host'], params['password'] = params['host'].strip('@')
 
     if path:
         logger.info('Using %s as music library path' % path)
@@ -718,41 +718,18 @@ if __name__ == '__main__':
 
 
     loop = gobject.MainLoop()
-
     signal.signal(signal.SIGINT, handle_sigint)
 
     # Init DBUS connection
     session_bus = dbus.SessionBus()
     name = dbus.service.BusName('org.mpris.MediaPlayer2.mpd', session_bus)
+    dbusIface = MPRISInterface(session_bus, path)
 
-    root = MPRISRoot(session_bus, path)
-    #track_list = MPRISTrackList(session_bus, path)
-    #player = MPRISPlayer(session_bus, path)
-
-    # Init MPD connection
-    mpd_client = mpd.MPDClient()
-    try:
-        mpd_client.connect(params['host'], params['port'])
-        if params['password']:
-            mpd_client.password(params['password'])
-    except socket.error, e:
-        logger.error('Fatal: Could not connect to MPD: ' + str(e))
-        sys.exit(2)
-    except mpd.CommandError, e:
-        logger.error('Fatal: MPD command error: ' + str(e))
-        sys.exit(2)
-
-    # Get URL handlers supported by MPD
-    if 'urlhandlers' in mpd_client.commands():
-        urlhandlers = mpd_client.urlhandlers()
-
-    # Create wrapper to handle connection failures with MPD more gracefully..
-    # i.e. throw another kind of exception.. :P
-    mpd_wrapper = MPDWrapper(mpd_client)
+    # Create wrapper to handle connection failures with MPD more gracefully
+    mpd_wrapper = MPDWrapper(dbusIface)
 
     # Add periodic status check for MPRIS signals
-    gobject.timeout_add(1000, check_mpd_status(mpd_client, params['host'], 
-        params['port'], params['password'], root).next)
+    gobject.timeout_add(1000, mpd_wrapper.monitor().next)
 
     # init mmkeys, if configured
     if params['mmkeys']:
@@ -785,7 +762,7 @@ if __name__ == '__main__':
 
     # Clean up
     try:
-        mpd_client.close()
-        mpd_client.disconnect()
+        mpd_wrapper.close()
+        mpd_wrapper.disconnect()
     except mpd.ConnectionError:
         logger.error('Failed to disconnect properly')
