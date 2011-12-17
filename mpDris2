@@ -486,6 +486,7 @@ class MPRISRoot(dbus.service.Object):
 
     @dbus.service.signal(__player_interface, signature='x')
     def Seeked(self, position):
+        print "Seeked to %i" % position
         return float(position)
 
     @dbus.service.method(__player_interface, in_signature='ox', out_signature='')
@@ -533,19 +534,20 @@ def submit_notification(song):
 def check_mpd_status(mpd_client, host, port, password, root):
     # TODO: This should perhaps be exception-checked?
     status = mpd_client.status()
+    position = 0
+    song = mpd_client.currentsong()
 
-    # Invalidate some fields, so that we throw out events at start
-    status['state'] = 'invalid'
-    status['songid'] = -1
+    # Should we send notifications ?
     notify = params['notify'];
 
-    song = mpd_client.currentsong()
     is_stream = 'name' in song
 
     while True:
         old_status = status
+        old_position = position
         try:
             status = mpd_client.status()
+            position = int(status['time'].split(':')[0])
         except (socket.error, mpd.MPDError):
             # Command, failed - try to reconnect
             while True:
@@ -560,9 +562,7 @@ def check_mpd_status(mpd_client, host, port, password, root):
                     yield old_status
                     # Retry..
                     continue
-
                 break
-
             # Successful reconnection
             pass
 
@@ -583,6 +583,10 @@ def check_mpd_status(mpd_client, host, port, password, root):
 
         if old_status['repeat'] != status['repeat']:
             root.update_property('org.mpris.MediaPlayer2.Player', 'LoopStatus')
+
+        if abs(position - old_position) > 2 and \
+           old_status['songid'] == status['songid']:
+            root.Seeked(position * 1000000)
 
         yield status
 
