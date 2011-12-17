@@ -1,0 +1,13 @@
+Makefile
+Makefile.in
+config.*
+configure
+depcomp
+install-sh
+missing
+aclocal.m4
+autom4te.cache
+ChangeLog
+NEWS
+INSTALL
+org.mpris.MediaPlayer2.mpd.service
