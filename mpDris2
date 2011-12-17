@@ -627,14 +627,13 @@ def find_music_dir():
         pass
 
     paths = '~/Music', '~/music'
-    print "Trying to guess music dir: %s" % str(paths)
     for path in map(os.path.expanduser, paths):
         if os.path.isdir(path):
             return path
 
     return None
 
-def usage():
+def usage(params):
     print """\
 Usage: %(progname)s [OPTION]... [MPD_HOST] [MPD_PORT]
 
@@ -645,27 +644,12 @@ Note: Environment variables MPD_HOST and MPD_PORT can be used instead of above
 
 Default: MPD_HOST: %(host)s, MPD_PORT: %(port)s
 
-Report bugs to <pilo@ayeon.org>""" % params
+Report bugs to https://github.com/eonpatapon/mpDris2/issues""" % params
 
 if __name__ == '__main__':
     DBusGMainLoop(set_as_default=True)
 
     path = find_music_dir()
-
-    try:
-        (opts, args) = getopt.getopt(sys.argv[1:], 'hp:', ['help', 'path='])
-    except getopt.GetoptError, (msg, opt):
-        print sys.argv[0] + ': ' + msg
-        print
-        usage()
-        sys.exit(2)
-
-    for (opt, arg) in opts:
-        if opt in ['-h', '--help']:
-            usage(params)
-            sys.exit()
-        elif opt in ['-p', '--path']:
-            path = arg
 
     config = ConfigParser.SafeConfigParser()
     config.read(['/etc/mpDris2.conf', os.path.expanduser('~/.config/mpDris2/mpDris2.conf')])
@@ -677,11 +661,25 @@ if __name__ == '__main__':
     if config.has_option('Connection', 'password'):
         params['password'] = config.get('Connection', 'password')
 
-
     if 'MPD_HOST' in os.environ:
         params['host'] = os.environ['MPD_HOST']
     if 'MPD_PORT' in os.environ:
         params['port'] = os.environ['MPD_PORT']
+
+    try:
+        (opts, args) = getopt.getopt(sys.argv[1:], 'hp:', ['help', 'path='])
+    except getopt.GetoptError, (msg, opt):
+        print sys.argv[0] + ': ' + msg
+        print
+        usage(params)
+        sys.exit(2)
+
+    for (opt, arg) in opts:
+        if opt in ['-h', '--help']:
+            usage(params)
+            sys.exit()
+        elif opt in ['-p', '--path']:
+            path = arg
 
     if len(args) > 2:
         usage(params)
