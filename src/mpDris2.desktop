@@ -1,6 +1,6 @@
 [Desktop Entry]
-Name=Music Player Daemon
-#Comment=
+Name=mpDris2
+Comment=MPRIS 2 support for MPD
 Exec=mpDris2
 Icon=sound
 StartupNotify=false

@@ -5,3 +5,5 @@ AC_OUTPUT([
 Makefile
 src/Makefile
 ])
+dnl Warn user sysconfdir is not /etc, if necessary.
+make sysconfdirwarning
