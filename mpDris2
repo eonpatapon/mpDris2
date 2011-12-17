@@ -483,19 +483,15 @@ class MPRISRoot(dbus.service.Object):
     def Seek(self, offset):
         status = mpd_wrapper.status()
         current, end = status['time'].split(':')
-        current = int(current) * 1000
-        end = int(end) * 1000
-        offset = int(offset)
+        current = int(current)
+        end = int(end)
+        offset = int(offset) / 1000000
         if current + offset <= end:
-            pos = (current + offset) / 1000
-            if pos < 0: pos = 0
-            mpd_wrapper.seekid(int(status['songid']), pos)
+            position = current + offset
+            if position < 0: position = 0
+            mpd_wrapper.seekid(int(status['songid']), position)
+            self.Seeked(position * 1000000)
         return
-
-    @dbus.service.signal(__player_interface, signature='x')
-    def Seeked(self, position):
-        logger.debug("Seeked to %i" % position)
-        return float(position)
 
     @dbus.service.method(__player_interface, in_signature='ox', out_signature='')
     def SetPosition(self, trackid, position):
@@ -508,6 +504,11 @@ class MPRISRoot(dbus.service.Object):
             mpd_wrapper.seekid(int(song['id']), position)
             self.Seeked(position * 1000000)
         return
+
+    @dbus.service.signal(__player_interface, signature='x')
+    def Seeked(self, position):
+        logger.debug("Seeked to %i" % position)
+        return float(position)
 
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def OpenUri(self):
