@@ -21,10 +21,8 @@ import sys
 import re
 import shlex
 import signal
-import string
 import socket
 import getopt
-
 import mpd
 import gobject
 import dbus
@@ -535,12 +533,9 @@ def check_mpd_status(mpd_client, host, port, password, root):
     # TODO: This should perhaps be exception-checked?
     status = mpd_client.status()
     position = 0
-    song = mpd_client.currentsong()
 
     # Should we send notifications ?
     notify = params['notify'];
-
-    is_stream = 'name' in song
 
     while True:
         old_status = status
@@ -558,7 +553,7 @@ def check_mpd_status(mpd_client, host, port, password, root):
                     mpd_client.connect(host, port)
                     if password:
                         mpd_client.password(password)
-                except (socket.error, mpd.MPDError), e:
+                except (socket.error, mpd.MPDError):
                     yield old_status
                     # Retry..
                     continue
