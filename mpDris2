@@ -30,6 +30,11 @@ import dbus.service
 from dbus.mainloop.glib import DBusGMainLoop
 import ConfigParser
 
+import logging
+logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', 
+    level=logging.INFO)
+logger = logging.getLogger('mpDris2')
+
 params = {
     'host': 'localhost',
     'port': 6600,
@@ -44,6 +49,7 @@ try:
     import pynotify
 except:
     params['notify'] = False
+
 
 notification = None
 
@@ -185,7 +191,8 @@ MPRIS2_INTROSPECTION = \
 # Default url handlers if MPD doesn't support 'urlhandlers' command
 urlhandlers = [ 'http://' ]
 downloaded_covers = [ '.covers/%s-%s.jpg' ]
-local_covers = [ 'cover.jpg', 'album.jpg', 'front.jpg', 'folder.jpg', '.folder.jpg', '.folder.png', 'AlbumArt.jpg', 'AlbumArtSmall.jpg' ]
+local_covers = [ 'cover.jpg', 'album.jpg', 'front.jpg', 'folder.jpg', 
+    '.folder.jpg', '.folder.png', 'AlbumArt.jpg', 'AlbumArtSmall.jpg' ]
 
 def FormatMetadata(metadata):
     """http://xmms2.org/wiki/MPRIS_Metadata"""
@@ -203,12 +210,14 @@ def FormatMetadata(metadata):
 
     if 'track' in metadata:
         if re.match('^([0-9]+).*', metadata['track']):
-            metadata['xesam:trackNumber'] = int(re.match('^([0-9]+).*', metadata['track']).group(1))
+            metadata['xesam:trackNumber'] = int(re.match('^([0-9]+).*', 
+                metadata['track']).group(1))
         else:
             metadata['xesam:trackNumber'] = 0
 
     if 'disc' in metadata:
-        metadata['xesam:discNumber'] = int(re.match('^([0-9]+).*', metadata['disc']).group(1))
+        metadata['xesam:discNumber'] = int(re.match('^([0-9]+).*', 
+            metadata['disc']).group(1))
 
     if 'artist' in metadata:
         metadata['xesam:artist'] = [metadata['artist'],]
@@ -234,7 +243,8 @@ def FormatMetadata(metadata):
                     cover = 'file://' + os.path.join(basedirpath, f)
             if not cover and 'artist' in metadata and 'album' in metadata:
                 for f in downloaded_covers:
-                    f = os.path.expanduser(os.path.join('~', f % (metadata['artist'], metadata['album'])))
+                    f = os.path.expanduser(os.path.join('~', f % \
+                        (metadata['artist'], metadata['album'])))
                     if os.path.exists(f):
                         cover = 'file://' + f
             if cover:
@@ -258,8 +268,8 @@ def FormatMetadata(metadata):
             metadata[key] = allowed_tags[key](value)
         except ValueError, e:
             del metadata[key]
-            # FIXME
-            print e
+            logger.debug("Can't cast value %s to %s" % str(value), 
+                str(allowed_tags[key]))
 
     return dbus.Dictionary(metadata, signature='sv')
 
@@ -422,7 +432,7 @@ class MPRISRoot(dbus.service.Object):
             value = getter()
         else:
             value = getter
-        print 'Updated property: %s = %s' % (prop, value)
+        logger.debug('Updated property: %s = %s' % (prop, value))
         self.PropertiesChanged(interface, {prop: value}, [])
 
     # Root methods
@@ -484,7 +494,7 @@ class MPRISRoot(dbus.service.Object):
 
     @dbus.service.signal(__player_interface, signature='x')
     def Seeked(self, position):
-        print "Seeked to %i" % position
+        logger.debug("Seeked to %i" % position)
         return float(position)
 
     @dbus.service.method(__player_interface, in_signature='ox', out_signature='')
@@ -507,7 +517,7 @@ class MPRISRoot(dbus.service.Object):
 
 # Handle signals more gracefully
 def handle_sigint(signum, frame):
-    print 'Caught SIGINT, exiting.'
+    logger.info('Caught SIGINT, exiting.')
     loop.quit()
 
 # issue libnotify on song change
@@ -525,7 +535,7 @@ def submit_notification(song):
     notification.update(title, body, uri)
     notification.set_timeout(pynotify.EXPIRES_DEFAULT)
     if not notification.show():
-        print 'Error: failed to show notification; disabling.'
+        logger.error("Failed to show notification, disabling.")
         params['notify'] = False
 
 # Periodic status check function
@@ -587,7 +597,7 @@ def check_mpd_status(mpd_client, host, port, password, root):
 
 # GNOME media key handler
 def on_mediakey(appname, key):
-    print 'Got GNOME mmkey "%s" for "%s"' % (key, appname)
+    logger.debug('Got GNOME mmkey "%s" for "%s"' % (key, appname))
     if key == 'Play':
         status = mpd_wrapper.status()
         if status['state'] == 'play':
@@ -694,12 +704,12 @@ if __name__ == '__main__':
         (params['host'], params['password']) = host_and_password(params['host'])
 
     if path:
-        print 'Using %s as music library path' % path
+        logger.info('Using %s as music library path' % path)
         if not path.startswith('file://'):
             params['music_dir'] = 'file://' + path
     else:
-        print 'Warning: By not supplying a path for the music library ' \
-              'this program will break the MPRIS specification!'
+        logger.warning('By not supplying a path for the music library ' \
+            'this program will break the MPRIS specification!')
 
     for bling in ['mmkeys','notify']:
         if config.has_option('Bling', bling):
@@ -725,10 +735,10 @@ if __name__ == '__main__':
         if params['password']:
             mpd_client.password(params['password'])
     except socket.error, e:
-        print 'Fatal: Could not connect to MPD: ' + str(e)
+        logger.error('Fatal: Could not connect to MPD: ' + str(e))
         sys.exit(2)
     except mpd.CommandError, e:
-        print 'Fatal: MPD command error: ' + str(e)
+        logger.error('Fatal: MPD command error: ' + str(e))
         sys.exit(2)
 
     # Get URL handlers supported by MPD
@@ -740,20 +750,24 @@ if __name__ == '__main__':
     mpd_wrapper = MPDWrapper(mpd_client)
 
     # Add periodic status check for MPRIS signals
-    gobject.timeout_add(1000, check_mpd_status(mpd_client, params['host'], params['port'], params['password'], root).next)
+    gobject.timeout_add(1000, check_mpd_status(mpd_client, params['host'], 
+        params['port'], params['password'], root).next)
 
     # init mmkeys, if configured
     if params['mmkeys']:
         try:
-            gsd_object = session_bus.get_object('org.gnome.SettingsDaemon', '/org/gnome/SettingsDaemon/MediaKeys')
+            gsd_object = session_bus.get_object('org.gnome.SettingsDaemon', 
+                '/org/gnome/SettingsDaemon/MediaKeys')
 
             # this is what gives us the multi media keys.
-            gsd_object.GrabMediaPlayerKeys('mpDris2', 0, dbus_interface='org.gnome.SettingsDaemon.MediaKeys')
+            gsd_object.GrabMediaPlayerKeys('mpDris2', 0, 
+                dbus_interface='org.gnome.SettingsDaemon.MediaKeys')
 
             # connect_to_signal registers our callback function.
             gsd_object.connect_to_signal('MediaPlayerKeyPressed', on_mediakey)
         except:
-            print 'Error: failed to connect to GNOME Settings Daemon; disabling multimedia key support'
+            logger.error('Error: failed to connect to GNOME Settings Daemon; \
+                disabling multimedia key support')
             params['mmkeys'] = False
 
     # init libnotify, if configured
@@ -761,7 +775,8 @@ if __name__ == '__main__':
         if pynotify.init("mpDris2"):
             notification = pynotify.Notification("", "", "")
         else:
-            print 'Error: failed to init libnotify; disabling notifications'
+            logger.error('Error: failed to init libnotify; disabling \
+                notifications')
             params['notify'] = False
 
     # Run idle loop
@@ -772,4 +787,4 @@ if __name__ == '__main__':
         mpd_client.close()
         mpd_client.disconnect()
     except mpd.ConnectionError:
-        pass
+        logger.error('Failed to disconnect properly')
