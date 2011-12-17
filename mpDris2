@@ -627,7 +627,7 @@ def find_music_dir():
         pass
 
     paths = '~/Music', '~/music'
-    print "Trying to guess music dir: %s" % paths
+    print "Trying to guess music dir: %s" % str(paths)
     for path in map(os.path.expanduser, paths):
         if os.path.isdir(path):
             return path
