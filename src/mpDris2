@@ -277,19 +277,18 @@ def FormatMetadata(metadata):
 # Wrapper to handle socket errors and similar
 class MPDWrapper(mpd.MPDClient):
 
-    def __init__(self, dbus, params):
+    def __init__(self, params):
         mpd.MPDClient.__init__(self)
         self._dbus = dbus
         self._params = params
         self._monitor = False
         self._status = False
         self._position = 0
-        # Should we send notifications ?
-        self._notify = self._params['notify'];
+        self._dbus_service = False
 
     def run(self):
         if self.my_connect():
-            # If connection fail retry
+            # If connection fail retry in 5 seconds
             gobject.timeout_add(5000, self.my_connect)
 
     def my_connect(self):
@@ -305,6 +304,13 @@ class MPDWrapper(mpd.MPDClient):
             logger.debug('Connected to MPD server.')
             # Make the socket non blocking to detect deconnections
             self._sock.settimeout(5.0)
+            # Export our DBUS service
+            if not self._dbus_service:
+                self._dbus_service = MPRISInterface(self._params['music_dir'])
+            else:
+                self._dbus_service.add_to_connection(dbus.SessionBus(), 
+                    '/org/mpris/MediaPlayer2')
+                self._dbus_service.aquire_name()
             # Init internal state to throw events at start
             self.init_state()
             # Add periodic status check for sending MPRIS events
@@ -330,7 +336,6 @@ class MPDWrapper(mpd.MPDClient):
         old_status = self._status
         old_position = self._position
         try:
-            logger.debug("Getting current status")
             self._status = self.status()
             if 'time' in self._status:
                 self._position = int(self._status['time'].split(':')[0])
@@ -338,6 +343,10 @@ class MPDWrapper(mpd.MPDClient):
                 self._position = 0
         except (socket.error, mpd.MPDError):
             logger.error("Disconnected ?")
+            # Release the Dbus name
+            self._dbus_service.release_name();
+            # Disconnect service
+            self._dbus_service.remove_from_connection();
             # Stop monitoring
             gobject.source_remove(self._monitor)
             # Try to reconnect
@@ -345,35 +354,49 @@ class MPDWrapper(mpd.MPDClient):
 
         if self._status['state'] != 'stop' and old_status['state'] != 'stop':
             if old_status['songid'] != self._status['songid']:
-                self._dbus.update_property('org.mpris.MediaPlayer2.Player', 'Metadata')
-                if self._notify:
+                self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'Metadata')
+                if self._params['notify']:
                     submit_notification(self.currentsong())
 
         if old_status['volume'] != self._status['volume']:
-            self._dbus.update_property('org.mpris.MediaPlayer2.Player', 'Volume')
+            self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'Volume')
 
         if old_status['state'] != self._status['state']:
-            self._dbus.update_property('org.mpris.MediaPlayer2.Player', 'PlaybackStatus')
+            self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'PlaybackStatus')
 
         if old_status['random'] != self._status['random']:
-            self._dbus.update_property('org.mpris.MediaPlayer2.Player', 'Shuffle')
+            self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'Shuffle')
 
         if old_status['repeat'] != self._status['repeat']:
-            self._dbus.update_property('org.mpris.MediaPlayer2.Player', 'LoopStatus')
+            self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'LoopStatus')
 
         if (abs(self._position - old_position) > 2 and \
            old_status['songid'] == self._status['songid']) or \
            old_status['songid'] == '-1':
-            self._dbus.Seeked(self._position * 1000000)
+            self._dbus_service.Seeked(self._position * 1000000)
 
         return True
 
 class MPRISInterface(dbus.service.Object):
     ''' The base object of an MPRIS player '''
 
+    __name = "org.mpris.MediaPlayer2.mpd"
     __path = "/org/mpris/MediaPlayer2"
     __introspect_interface = "org.freedesktop.DBus.Introspectable"
     __prop_interface = dbus.PROPERTIES_IFACE
+
+    def __init__(self, bus, path = ""):
+        dbus.service.Object.__init__(self, dbus.SessionBus(), 
+            MPRISInterface.__path)
+        self.path = path
+        self.aquire_name()
+
+    def aquire_name(self):
+        self._bus_name = dbus.service.BusName(MPRISInterface.__name, 
+            bus=dbus.SessionBus())
+
+    def release_name(self):
+        del self._bus_name
 
     __root_interface = "org.mpris.MediaPlayer2"
     __root_props = {
@@ -466,10 +489,6 @@ class MPRISInterface(dbus.service.Object):
     __prop_mapping = {
         __player_interface: __player_props,
         __root_interface: __root_props}
-
-    def __init__(self, bus, path = ""):
-        self.path = path
-        dbus.service.Object.__init__(self, bus, "/org/mpris/MediaPlayer2")
 
     @dbus.service.method(__introspect_interface)
     def Introspect(self):
@@ -736,13 +755,8 @@ if __name__ == '__main__':
     loop = gobject.MainLoop()
     signal.signal(signal.SIGINT, handle_sigint)
 
-    # Init DBUS connection
-    session_bus = dbus.SessionBus()
-    name = dbus.service.BusName('org.mpris.MediaPlayer2.mpd', session_bus)
-    dbusIface = MPRISInterface(session_bus, path)
-
     # Create wrapper to handle connection failures with MPD more gracefully
-    mpd_wrapper = MPDWrapper(dbusIface, params)
+    mpd_wrapper = MPDWrapper(params)
     mpd_wrapper.run()
 
     # init mmkeys, if configured
