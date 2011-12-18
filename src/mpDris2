@@ -726,7 +726,7 @@ if __name__ == '__main__':
     dbusIface = MPRISInterface(session_bus, path)
 
     # Create wrapper to handle connection failures with MPD more gracefully
-    mpd_wrapper = MPDWrapper(dbusIface)
+    mpd_wrapper = MPDWrapper(dbusIface, params)
 
     # Add periodic status check for MPRIS signals
     gobject.timeout_add(1000, mpd_wrapper.monitor().next)
