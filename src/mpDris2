@@ -281,75 +281,92 @@ class MPDWrapper(mpd.MPDClient):
         mpd.MPDClient.__init__(self)
         self._dbus = dbus
         self._params = params
-        self.my_connect()
+        self._monitor = False
+        self._status = False
+        self._position = 0
+        # Should we send notifications ?
+        self._notify = self._params['notify'];
+
+    def run(self):
+        if self.my_connect():
+            # If connection fail retry
+            gobject.timeout_add(5000, self.my_connect)
 
     def my_connect(self):
         # Init MPD connection
-        while True:
-            try:
-                self._reset()
-                self.connect(self._params['host'], self._params['port'])
-                if params['password']:
-                    self.password(self._params['password'])
-            except socket.error as e:
-                logger.error('Fatal: Could not connect to MPD: ' + str(e))
-            except mpd.CommandError as e:
-                logger.error('Fatal: MPD command error: ' + str(e))
-            break
+        try:
+            self._reset()
+            self.connect(self._params['host'], self._params['port'])
+            if params['password']:
+                self.password(self._params['password'])
+            # Get URL handlers supported by MPD
+            if 'urlhandlers' in self.commands():
+                urlhandlers = self.urlhandlers()
+            logger.debug('Connected to MPD server.')
+            # Make the socket non blocking to detect deconnections
+            self._sock.settimeout(5.0)
+            # Init internal state to throw events at start
+            self.init_state()
+            # Add periodic status check for sending MPRIS events
+            self._monitor = gobject.timeout_add(1000, self.monitor)
+            # Return False to stop trying to connect
+            return False
+        except socket.error as e:
+            logger.error('Fatal: Could not connect to MPD: ' + str(e))
+            return True
+        except mpd.CommandError as e:
+            logger.error('Fatal: MPD command error: ' + str(e))
+            return True
 
-        # Get URL handlers supported by MPD
-        if 'urlhandlers' in self.commands():
-            urlhandlers = self.urlhandlers()
-
-        return True
+    def init_state(self):
+        # Get current state
+        self._status = self.status()
+        # Invalid some fields to throw events at start
+        self._status['state'] = 'invalid'
+        self._status['songid'] = '-1'
+        self._position = 0
 
     def monitor(self):
-        # Get current state
-        status = self.status()
-        # Invalid some fields to throw events at start
-        status['state'] = 'invalid'
-        status['songid'] = '-1'
-        position = 0
-        # Should we send notifications ?
-        notify = self._params['notify'];
+        old_status = self._status
+        old_position = self._position
+        try:
+            logger.debug("Getting current status")
+            self._status = self.status()
+            if 'time' in self._status:
+                self._position = int(self._status['time'].split(':')[0])
+            else:
+                self._position = 0
+        except (socket.error, mpd.MPDError):
+            logger.error("Disconnected ?")
+            # Stop monitoring
+            gobject.source_remove(self._monitor)
+            # Try to reconnect
+            self.run()
 
-        while True:
-            old_status = status
-            old_position = position
-            try:
-                status = self.status()
-                if 'time' in status:
-                    position = int(status['time'].split(':')[0])
-                else:
-                    position = 0
-            except (socket.error, mpd.MPDError):
-                # Command, failed - try to reconnect
-                self.my_connect()
+        if self._status['state'] != 'stop' and old_status['state'] != 'stop':
+            if old_status['songid'] != self._status['songid']:
+                self._dbus.update_property('org.mpris.MediaPlayer2.Player', 'Metadata')
+                if self._notify:
+                    submit_notification(self.currentsong())
 
-            if status['state'] != 'stop' and old_status['state'] != 'stop':
-                if old_status['songid'] != status['songid']:
-                    self._dbus.update_property('org.mpris.MediaPlayer2.Player', 'Metadata')
-                    if notify:
-                        submit_notification(self.currentsong())
+        if old_status['volume'] != self._status['volume']:
+            self._dbus.update_property('org.mpris.MediaPlayer2.Player', 'Volume')
 
-            if old_status['volume'] != status['volume']:
-                self._dbus.update_property('org.mpris.MediaPlayer2.Player', 'Volume')
+        if old_status['state'] != self._status['state']:
+            self._dbus.update_property('org.mpris.MediaPlayer2.Player', 'PlaybackStatus')
 
-            if old_status['state'] != status['state']:
-                self._dbus.update_property('org.mpris.MediaPlayer2.Player', 'PlaybackStatus')
+        if old_status['random'] != self._status['random']:
+            self._dbus.update_property('org.mpris.MediaPlayer2.Player', 'Shuffle')
 
-            if old_status['random'] != status['random']:
-                self._dbus.update_property('org.mpris.MediaPlayer2.Player', 'Shuffle')
+        if old_status['repeat'] != self._status['repeat']:
+            self._dbus.update_property('org.mpris.MediaPlayer2.Player', 'LoopStatus')
 
-            if old_status['repeat'] != status['repeat']:
-                self._dbus.update_property('org.mpris.MediaPlayer2.Player', 'LoopStatus')
+        if (abs(self._position - old_position) > 2 and \
+           old_status['songid'] == self._status['songid']) or \
+           old_status['songid'] == '-1':
+            self._dbus.Seeked(self._position * 1000000)
 
-            if (abs(position - old_position) > 2 and \
-               old_status['songid'] == status['songid']) or \
-               old_status['songid'] == '-1':
-                self._dbus.Seeked(position * 1000000)
-
-            yield status
+        return True
 
 class MPRISInterface(dbus.service.Object):
     ''' The base object of an MPRIS player '''
@@ -579,7 +596,7 @@ class MPRISInterface(dbus.service.Object):
 
 # Handle signals more gracefully
 def handle_sigint(signum, frame):
-    logger.info('Caught SIGINT, exiting.')
+    logger.debug('Caught SIGINT, exiting.')
     loop.quit()
 
 # issue libnotify on song change
@@ -716,7 +733,6 @@ if __name__ == '__main__':
         if config.has_option('Bling', bling):
             params[bling] = config.getboolean('Bling', bling)
 
-
     loop = gobject.MainLoop()
     signal.signal(signal.SIGINT, handle_sigint)
 
@@ -727,9 +743,7 @@ if __name__ == '__main__':
 
     # Create wrapper to handle connection failures with MPD more gracefully
     mpd_wrapper = MPDWrapper(dbusIface, params)
-
-    # Add periodic status check for MPRIS signals
-    gobject.timeout_add(1000, mpd_wrapper.monitor().next)
+    mpd_wrapper.run()
 
     # init mmkeys, if configured
     if params['mmkeys']:
@@ -764,5 +778,6 @@ if __name__ == '__main__':
     try:
         mpd_wrapper.close()
         mpd_wrapper.disconnect()
+        logger.debug('Exiting')
     except mpd.ConnectionError:
         logger.error('Failed to disconnect properly')
