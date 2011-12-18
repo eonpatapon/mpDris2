@@ -9,8 +9,7 @@ mpDris2 is run in the user session and monitors a local or distant mpd server.
   git clone git://github.com/eonpatapon/mpDris2.git
   cd mpDris2
   ./autogen.sh
-  make
-  make install
+  make install (as root)
 
 Logout/login from your session.
 
