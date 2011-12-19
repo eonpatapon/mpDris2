@@ -31,7 +31,7 @@ from dbus.mainloop.glib import DBusGMainLoop
 import ConfigParser
 
 import logging
-logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', 
+logging.basicConfig(format='%(asctime)s %(module)s %(levelname)s: %(message)s', 
     level=logging.INFO)
 logger = logging.getLogger('mpDris2')
 
@@ -208,6 +208,7 @@ class MPDWrapper(mpd.MPDClient):
         self._status = False
         self._position = 0
         self._dbus_service = False
+        self._errors = 0
         # init mmkeys, if configured
         if self._params['mmkeys']:
             try:
@@ -257,10 +258,16 @@ class MPDWrapper(mpd.MPDClient):
             self.init_state()
             # Add periodic status check for sending MPRIS events
             self._monitor = gobject.timeout_add(1000, self.monitor)
+            # Reset error counter
+            self._errors = 0
             # Return False to stop trying to connect
             return False
         except socket.error as e:
-            logger.error('Could not connect to MPD: %s' % e)
+            self._errors += 1
+            if self._errors < 6:
+                logger.error('Could not connect to MPD: %s' % e)
+            if self._errors == 6:
+                logger.info('Continue to connect but going silent')
             return True
         except mpd.CommandError as e:
             logger.error('MPD command error: %s' % e)
