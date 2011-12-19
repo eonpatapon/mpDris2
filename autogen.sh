@@ -1,4 +1,4 @@
 #!/bin/sh
 
 autoreconf -fi
-./configure --sysconfdir=/etc
+./configure --sysconfdir=/etc $@
