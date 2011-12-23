@@ -353,13 +353,16 @@ class MPDWrapper(mpd.MPDClient):
 
 
 class Notify:
-    def __init__(self):
+    def __init__(self, params):
         """ Init the notification system """
-        if pynotify.init(identity):
-            self._notification = pynotify.Notification("", "", "")
+        if params['notify']:
+            if pynotify.init(identity):
+                self._notification = pynotify.Notification("", "", "")
+            else:
+                logger.error('Failed to init libnotify; disabling' \
+                    'notifications')
+                self._notification = False
         else:
-            logger.error('Failed to init libnotify; disabling' \
-                'notifications')
             self._notification = False
 
     def notify(self, title, body, uri = ''):
@@ -805,7 +808,7 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, handle_sigint)
 
     # Wrapper to send notifications
-    notification = Notify()
+    notification = Notify(params)
 
     # Create wrapper to handle connection failures with MPD more gracefully
     mpd_wrapper = MPDWrapper(params)
