@@ -311,6 +311,11 @@ class MPDWrapper(mpd.MPDClient):
                         uri = metadata['mpris:artUrl']
                     notification.notify(metadata['xesam:title'], 
                         'by %s' % metadata['xesam:artist'][0], uri)
+
+            if (abs(self._position - old_position) > 2 and \
+               old_status['songid'] == self._status['songid']) or \
+               old_status['songid'] == '-1':
+                self._dbus_service.Seeked(self._position * 1000000)
                     
 
         if old_status['volume'] != self._status['volume']:
@@ -324,11 +329,6 @@ class MPDWrapper(mpd.MPDClient):
 
         if old_status['repeat'] != self._status['repeat']:
             self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'LoopStatus')
-
-        if (abs(self._position - old_position) > 2 and \
-           old_status['songid'] == self._status['songid']) or \
-           old_status['songid'] == '-1':
-            self._dbus_service.Seeked(self._position * 1000000)
 
         # Return True to continue polling
         return True
