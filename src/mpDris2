@@ -242,8 +242,11 @@ class MPDWrapper(mpd.MPDClient):
             # Get URL handlers supported by MPD
             if 'urlhandlers' in self.commands():
                 urlhandlers = self.urlhandlers()
-            logger.debug('Connected to MPD server.')
-            notification.rnotify(identity, 'Connected')
+            if self._errors > 0:
+                notification.rnotify(identity, 'Reconnected')
+                logger.debug('Reconnected to MPD server.')
+            else:
+                logger.debug('Connected to MPD server.')
             # Make the socket non blocking to detect deconnections
             self._sock.settimeout(5.0)
             # Export our DBUS service
