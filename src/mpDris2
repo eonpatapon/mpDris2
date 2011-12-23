@@ -336,18 +336,21 @@ class MPDWrapper(mpd.MPDClient):
         logger.debug('Got GNOME mmkey "%s" for "%s"' % (key, appname))
         if key == 'Play':
             if self._status['state'] == 'play':
-                notification.rnotify(identity, 'Paused')
                 self.pause()
+                if self._params['notify']:
+                    notification.rnotify(identity, 'Paused')
             else:
-                notification.rnotify(identity, 'Playing')
                 self.play()
+                if self._params['notify']:
+                    notification.rnotify(identity, 'Playing')
         elif key == 'Next':
             self.next()
         elif key == 'Previous':
             self.previous()
         elif key == 'Stop':
-            notification.rnotify(identity, 'Stopped')
             self.stop()
+            if self._params['notify']:
+                notification.rnotify(identity, 'Stopped')
 
 
 class Notify:
@@ -553,7 +556,8 @@ class MPRISInterface(dbus.service.Object):
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Pause(self):
         mpd_wrapper.pause()
-        notification.rnotify(identity, 'Paused')
+        if params['notify']:
+            notification.rnotify(identity, 'Paused')
         return
 
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
@@ -561,22 +565,26 @@ class MPRISInterface(dbus.service.Object):
         status = mpd_wrapper.status()
         if status['state'] == 'play':
             mpd_wrapper.pause()
-            notification.rnotify(identity, 'Paused')
+            if params['notify']:
+                notification.rnotify(identity, 'Paused')
         else:
             mpd_wrapper.play()
-            notification.rnotify(identity, 'Playing')
+            if params['notify']:
+                notification.rnotify(identity, 'Playing')
         return
 
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Stop(self):
         mpd_wrapper.stop()
-        notification.rnotify(identity, 'Stopped')
+        if params['notify']:
+            notification.rnotify(identity, 'Stopped')
         return
 
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Play(self):
         mpd_wrapper.play()
-        notification.notify(identity, 'Playing')
+        if params['notify']:
+            notification.notify(identity, 'Playing')
         return
 
     @dbus.service.method(__player_interface, in_signature='x', out_signature='')
