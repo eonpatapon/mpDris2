@@ -787,7 +787,7 @@ if __name__ == '__main__':
             params['host'] = arg
 
     if '@' in params['host']:
-        params['host'], params['password'] = params['host'].split('@')
+        params['password'], params['host'] = params['host'].split('@', 1)
 
     if path:
         logger.info('Using %s as music library path' % path)
