@@ -243,7 +243,6 @@ class MPDWrapper(mpd.MPDClient):
             if 'urlhandlers' in self.commands():
                 urlhandlers = self.urlhandlers()
             logger.debug('Connected to MPD server.')
-            notification.rnotify(identity, 'Connected')
             # Make the socket non blocking to detect deconnections
             self._sock.settimeout(5.0)
             # Export our DBUS service
@@ -292,7 +291,6 @@ class MPDWrapper(mpd.MPDClient):
                 self._position = 0
         except (socket.error, mpd.MPDError):
             logger.warning("Disconnected")
-            notification.rnotify(identity, 'Disconnected', 'error')
             # Release the Dbus name
             self._dbus_service.release_name();
             # Disconnect service from the session bus
