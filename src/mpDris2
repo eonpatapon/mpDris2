@@ -459,9 +459,9 @@ class MPRISInterface(dbus.service.Object):
         status = mpd_wrapper.status()
         if 'time' in status:
             current, end = status['time'].split(':')
-            return int(current) * 1000000
+            return dbus.Int64((int(current) * 1000000))
         else:
-            return 0
+            return dbus.Int64(0)
 
     def __can_next():
         if 'nextsongid' in mpd_wrapper.status():
