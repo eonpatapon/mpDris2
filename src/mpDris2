@@ -312,8 +312,13 @@ class MPDWrapper(mpd.MPDClient):
                     uri = 'sound'
                     if 'mpris:artUrl' in metadata:
                         uri = metadata['mpris:artUrl']
-                    notification.notify(metadata['xesam:title'], 
-                        'by %s' % metadata['xesam:artist'][0], uri)
+                    title = 'Unknown Title'
+                    if 'xesam:title' in metadata:
+                        title = metadata['xesam:title']
+                    artist = 'Unknown Artist'
+                    if 'xesam:artist' in metadata:
+                        artist = metadata['xesam:artist'][0]
+                    notification.notify(title, 'by %s' % artist, uri)
 
             if (abs(self._position - old_position) > 2 and \
                old_status['songid'] == self._status['songid']) or \
