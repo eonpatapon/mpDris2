@@ -29,11 +29,7 @@ import dbus
 import dbus.service
 from dbus.mainloop.glib import DBusGMainLoop
 import ConfigParser
-
 import logging
-logging.basicConfig(format='%(asctime)s %(module)s %(levelname)s: %(message)s', 
-    level=logging.INFO)
-logger = logging.getLogger('mpDris2')
 
 identity = "Music Player Daemon"
 params = {
@@ -747,6 +743,7 @@ Note: Environment variables MPD_HOST and MPD_PORT can be used instead of above
       arguments.
 
      -p, --path=PATH        Sets the library path of MPD to PATH
+     -d, --debug            Run in debug mode
 
 Default: MPD_HOST: %(host)s, MPD_PORT: %(port)s
 
@@ -773,19 +770,27 @@ if __name__ == '__main__':
         params['port'] = os.environ['MPD_PORT']
 
     try:
-        (opts, args) = getopt.getopt(sys.argv[1:], 'hp:', ['help', 'path='])
+        (opts, args) = getopt.getopt(sys.argv[1:], 'hdp:', ['help', 'debug', 'path='])
     except getopt.GetoptError, (msg, opt):
         print sys.argv[0] + ': ' + msg
         print
         usage(params)
         sys.exit(2)
 
+    log_format = '%(asctime)s %(module)s %(levelname)s: %(message)s'
+    log_level = logging.INFO
+    
     for (opt, arg) in opts:
         if opt in ['-h', '--help']:
             usage(params)
             sys.exit()
         elif opt in ['-p', '--path']:
             path = arg
+        elif opt in ['-d', '--debug']:
+            log_level = logging.DEBUG
+
+    logging.basicConfig(format=log_format, level=log_level)
+    logger = logging.getLogger('mpDris2')     
 
     if len(args) > 2:
         usage(params)
