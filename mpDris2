@@ -402,15 +402,21 @@ class MPRISRoot(dbus.service.Object):
     # TODO Implement TrackList
 
     def __get_playlist_count():
-        return len(mpd_wrapper.listplaylists())
+        count = len(mpd_wrapper.listplaylists())
+        print "Playlist count: ", count
+        return count
 
     def __get_active_playlist():
-        return mpd_wrapper.playlist()
+        nope = []
+        nope.append(0)
+        nope.append(['','',''])
+        print "Active playlist: ", nope
+        return nope
 
     __playlists_interface = "org.mpris.MediaPlayer2.Playlists"
     __playlists_props = {
         "PlaylistCount": (__get_playlist_count, None),
-        "Orderings": (('UserDefined'), None),
+        "Orderings": (['Alphabetical'], None),
         "ActivePlaylist": (__get_active_playlist, None),
     }
 
@@ -418,7 +424,7 @@ class MPRISRoot(dbus.service.Object):
         __player_interface: __player_props,
         __root_interface: __root_props,
         #~ __tracklist_interface: __tracklist_props,
-        #~ __playlists_interface: __playlists_props,
+        __playlists_interface: __playlists_props,
     }
 
 
@@ -544,18 +550,26 @@ class MPRISRoot(dbus.service.Object):
     # Playlists methods
     @dbus.service.method(__playlists_interface, in_signature = 'o', out_signature = '')
     def ActivatePlaylist(self, playlist):
+        playlists = mpd_client.lisrplaylists()
         mpd_client.stop()
         mpd_client.clear()
-        mpd_client.load(playlist)
+        mpd_client.load(mpdPlaylist)
         mpd_client.play()
         return
 
     @dbus.service.method(__playlists_interface, in_signature = 'uusb', out_signature = 'a(oss)')
     def GetPlaylists(self, index, maxcount, order, reverseorder):
+        print "GetPlaylists:", index, maxcount, order, reverseorder
         playlists = mpd_client.listplaylists()
+        i = 0
+        a = []
         for playlist in playlists:
-            pass
-        return playlists
+            if i >= index and i <= index + maxcount:
+                b = ["/org/mpris/MediaPlayer2/Playlist/%s" %  i, playlist['playlist'], '']
+                a.append(b)
+            i = i + 1
+        print a
+        return a
 
 
 # Handle signals more gracefully
