@@ -314,7 +314,7 @@ class MPRISRoot(dbus.service.Object):
 
     __root_interface = "org.mpris.MediaPlayer2"
     __root_props = {
-        "CanQuit": (False, None),
+        "CanQuit": (True, None),
         "CanRaise": (False, None),
         "DesktopEntry": ("mpDris2", None),
         "HasTrackList": (False, None),
@@ -402,29 +402,39 @@ class MPRISRoot(dbus.service.Object):
     # TODO Implement TrackList
 
     def __get_playlist_count():
-        count = len(mpd_wrapper.listplaylists())
-        print "Playlist count: ", count
-        return count
+        return len(mpd_wrapper.listplaylists())
+
+    def __get_orderings():
+        orderings = dbus.Array(signature='s')
+        orderings.append(dbus.String('Alphabetical'))
+        return orderings
 
     def __get_active_playlist():
-        nope = []
-        nope.append(0)
-        nope.append(['','',''])
-        print "Active playlist: ", nope
+        """
+        MPD has currently no way to tell the active playlist.
+        Hence, the label 'Choose playlist' on the ubuntu sound
+        menu may stay at 'Label Empty'.
+        """ 
+        nope = dbus.Struct([dbus.Boolean(False),
+            dbus.Struct([
+                dbus.ObjectPath('/'),
+                dbus.String(''),
+                dbus.String('')])
+            ])
         return nope
 
     __playlists_interface = "org.mpris.MediaPlayer2.Playlists"
     __playlists_props = {
         "PlaylistCount": (__get_playlist_count, None),
-        "Orderings": (['Alphabetical'], None),
-        "ActivePlaylist": (__get_active_playlist, None),
+        "Orderings": (__get_orderings, None),
+        "ActivePlaylist": (__get_active_playlist, None)
     }
 
     __prop_mapping = {
         __player_interface: __player_props,
         __root_interface: __root_props,
         #~ __tracklist_interface: __tracklist_props,
-        __playlists_interface: __playlists_props,
+        __playlists_interface: __playlists_props
     }
 
 
@@ -480,6 +490,7 @@ class MPRISRoot(dbus.service.Object):
 
     @dbus.service.method(__root_interface, in_signature = '', out_signature = '')
     def Quit(self):
+        loop.quit()
         return
 
     # Player methods
@@ -549,25 +560,33 @@ class MPRISRoot(dbus.service.Object):
 
     # Playlists methods
     @dbus.service.method(__playlists_interface, in_signature = 'o', out_signature = '')
-    def ActivatePlaylist(self, playlist):
-        playlists = mpd_client.lisrplaylists()
-        mpd_client.stop()
-        mpd_client.clear()
-        mpd_client.load(mpdPlaylist)
-        mpd_client.play()
+    def ActivatePlaylist(self, requested):
+        try:
+            playlists = self.GetPlaylists(0, 10, '', 0)
+            for playlist in playlists:
+                if playlist[0] == requested:
+                    mpd_client.stop()
+                    mpd_client.clear()
+                    mpd_client.load(playlist[1])
+                    mpd_client.play()
+                    break
+        except:
+            pass
         return
 
     @dbus.service.method(__playlists_interface, in_signature = 'uusb', out_signature = 'a(oss)')
     def GetPlaylists(self, index, maxcount, order, reverseorder):
-        print "GetPlaylists:", index, maxcount, order, reverseorder
+        #TODO: do not ignore order & reverseorder
         playlists = mpd_client.listplaylists()
         i = 0
-        a = []
+        a = dbus.Array(signature='(oss)')
         for playlist in playlists:
             if i >= index and i <= index + maxcount:
-                b = ["/org/mpris/MediaPlayer2/Playlist/%s" %  i, playlist['playlist'], '']
+                b = dbus.Struct(
+                    [dbus.ObjectPath("/org/mpris/MediaPlayer2/Playlist/%s" %  i),
+                    dbus.String(playlist['playlist']), dbus.String('')])
                 a.append(b)
-            i = i + 1
+            i += 1
         print a
         return a
 
@@ -796,7 +815,7 @@ if __name__ == '__main__':
 
     # Init DBUS connection
     session_bus = dbus.SessionBus()
-    name = dbus.service.BusName('org.mpris.MediaPlayer2.mpd', session_bus)
+    name = dbus.service.BusName('org.mpris.MediaPlayer2.mpd', session_bus, 1, 1)
 
     root = MPRISRoot(session_bus, path)
     #track_list = MPRISTrackList(session_bus, path)
@@ -856,7 +875,10 @@ if __name__ == '__main__':
 
     # Clean up
     try:
+        print "Shutdown mpDris2."
         mpd_client.close()
         mpd_client.disconnect()
+        del name
+        session_bus.close()
     except mpd.ConnectionError:
         pass
