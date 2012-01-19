@@ -241,6 +241,11 @@ class MPDWrapper(mpd.MPDClient):
             # If connection fail retry in 5 seconds
             gobject.timeout_add(5000, self.my_connect)
 
+    def detach(self):
+        self._dbus_service.release_name();
+        self._dbus_service.remove_from_connection();
+        gobject.source_remove(self._monitor)
+
     def my_connect(self):
         """ Init MPD connection """
         try:
@@ -413,7 +418,7 @@ class MPRISInterface(dbus.service.Object):
 
     def aquire_name(self):
         self._bus_name = dbus.service.BusName(MPRISInterface.__name, 
-            bus=dbus.SessionBus())
+            dbus.SessionBus(), True, True)
 
     def release_name(self):
         del self._bus_name
@@ -675,23 +680,24 @@ class MPRISInterface(dbus.service.Object):
     # Playlists methods
     @dbus.service.method(__playlists_interface, in_signature = 'o', out_signature = '')
     def ActivatePlaylist(self, requested):
+        logger.debug('ActivatePlaylist(%s)' % requested)
         try:
             playlists = self.GetPlaylists(0, 10, '', 0)
             for playlist in playlists:
                 if playlist[0] == requested:
-                    mpd_client.stop()
-                    mpd_client.clear()
-                    mpd_client.load(playlist[1])
-                    mpd_client.play()
+                    mpd_wrapper.stop()
+                    mpd_wrapper.clear()
+                    mpd_wrapper.load(playlist[1])
+                    mpd_wrapper.play()
                     break
         except:
-            logger.debug('Can not activate playlist %s' % requested)
+            logger.error('Can not activate playlist %s' % requested)
         return
 
     @dbus.service.method(__playlists_interface, in_signature = 'uusb', out_signature = 'a(oss)')
     def GetPlaylists(self, index, maxcount, order, reverseorder):
         #TODO: do not ignore order & reverseorder
-        playlists = mpd_client.listplaylists()
+        playlists = mpd_wrapper.listplaylists()
         i = 0
         a = dbus.Array(signature='(oss)')
         for playlist in playlists:
@@ -914,6 +920,7 @@ if __name__ == '__main__':
     try:
         mpd_wrapper.close()
         mpd_wrapper.disconnect()
+        mpd_wrapper.detach()
         logger.debug('Exiting')
     except mpd.ConnectionError:
         logger.error('Failed to disconnect properly')
