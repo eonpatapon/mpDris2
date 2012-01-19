@@ -382,6 +382,7 @@ class Notify:
         if params['notify']:
             if pynotify.init(identity):
                 self._notification = pynotify.Notification("", "", "")
+                self._expired = True
             else:
                 logger.error('Failed to init libnotify; disabling' \
                     'notifications')
@@ -392,14 +393,23 @@ class Notify:
     def notify(self, title, body, uri = ''):
         """ Issue a new notification """
         if self._notification:
-            self._notification = pynotify.Notification(title, body, uri)
-            self._notification.show()
+            if self._expired:
+                self._notification = pynotify.Notification(title, body, uri)
+                self._expired = False
+                self._notification.connect('closed', self.handle_closed)
+                self._notification.show()
+            else:
+                self.rnotify(title, body, uri)
 
     def rnotify(self, title, body, uri = ''):
         """ Replace current notification """
         if self._notification:
             self._notification.update(title, body, uri)
             self._notification.show()
+
+    def handle_closed(self, n):
+        """ Honor expiration on Unity and Gnome3 """
+        self._expired = True
         
 
 class MPRISInterface(dbus.service.Object):
