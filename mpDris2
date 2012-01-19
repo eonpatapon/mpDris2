@@ -241,9 +241,12 @@ class MPDWrapper(mpd.MPDClient):
             # If connection fail retry in 5 seconds
             gobject.timeout_add(5000, self.my_connect)
 
-    def detach(self):
+    def detach_dbus(self):
+        # Release the Dbus name
         self._dbus_service.release_name();
+        # Disconnect service from the session bus
         self._dbus_service.remove_from_connection();
+        # Stop monitoring
         gobject.source_remove(self._monitor)
 
     def my_connect(self):
@@ -312,12 +315,7 @@ class MPDWrapper(mpd.MPDClient):
         except (socket.error, mpd.MPDError):
             logger.warning("Disconnected")
             notification.rnotify(identity, 'Disconnected', 'error')
-            # Release the Dbus name
-            self._dbus_service.release_name();
-            # Disconnect service from the session bus
-            self._dbus_service.remove_from_connection();
-            # Stop monitoring
-            gobject.source_remove(self._monitor)
+            self.detach_dbus()
             # Try to reconnect
             self.run()
 
@@ -359,9 +357,11 @@ class MPDWrapper(mpd.MPDClient):
 
     def on_mediakey(self, appname, key):
         """ GNOME media key handler """
-        logger.debug('Got GNOME mmkey "%s" for "%s"' % (key, appname))
-        if key == 'Play':
-            if self._status['state'] == 'play':
+        self.monitor() # for zipping faster than 1s
+        status = self._status['state']
+        logger.debug('Got GNOME mmkey "%s" for "%s" (%s)' % (key, appname, status))
+        if key in ['Play', 'Pause', 'PlayPause']: # vendor specific
+            if status == 'play':
                 notification.rnotify(identity, 'Paused')
                 self.pause()
             else:
@@ -374,7 +374,8 @@ class MPDWrapper(mpd.MPDClient):
         elif key == 'Stop':
             notification.rnotify(identity, 'Stopped')
             self.stop()
-
+        else:
+            logger.debug('Unhandled')
 
 class Notify:
     def __init__(self, params):
@@ -426,9 +427,18 @@ class MPRISInterface(dbus.service.Object):
         self.path = path
         self.aquire_name()
 
+    def on_name_aquired(self, owner):
+        """ gracefully quit if our name is taken, thus
+            thus avoid running multiple instances """
+        if owner != self._unique:
+            self.Quit()
+
     def aquire_name(self):
         self._bus_name = dbus.service.BusName(MPRISInterface.__name, 
-            dbus.SessionBus(), True, True)
+            dbus.SessionBus(), True, True) # force this instance
+        self._unique = self.connection.get_name_owner(self.__name)
+        self._bus_watcher = dbus.bus.NameOwnerWatch(dbus.SessionBus(),
+            MPRISInterface.__name, self.on_name_aquired)
 
     def release_name(self):
         del self._bus_name
@@ -533,8 +543,6 @@ class MPRISInterface(dbus.service.Object):
     def __get_active_playlist():
         """
         MPD has currently no way to tell the active playlist.
-        Hence, the label 'Choose playlist' on the ubuntu sound
-        menu may stay at 'Label Empty'.
         """ 
         nope = dbus.Struct([dbus.Boolean(False),
             dbus.Struct([
@@ -608,6 +616,7 @@ class MPRISInterface(dbus.service.Object):
 
     @dbus.service.method(__root_interface, in_signature='', out_signature='')
     def Quit(self):
+        logger.debug('Quit requested')
         loop.quit()
         return
 
@@ -930,7 +939,7 @@ if __name__ == '__main__':
     try:
         mpd_wrapper.close()
         mpd_wrapper.disconnect()
-        mpd_wrapper.detach()
+        mpd_wrapper.detach_dbus()
         logger.debug('Exiting')
     except mpd.ConnectionError:
         logger.error('Failed to disconnect properly')
