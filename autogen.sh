@@ -1,4 +1,7 @@
 #!/bin/sh
 
 autoreconf -fi
-./configure --sysconfdir=/etc $@
+
+if [ -z "$NOCONFIGURE" ]; then
+	./configure --sysconfdir=/etc "$@"
+fi
