@@ -638,7 +638,8 @@ def handle_sigint(signum, frame):
 def format_metadata(metadata):
     """http://xmms2.org/wiki/MPRIS_Metadata"""
 
-    metadata['mpris:trackid'] = "/org/mpris/MediaPlayer2/Track/%s" % metadata['id']
+    if 'id' in metadata:
+        metadata['mpris:trackid'] = "/org/mpris/MediaPlayer2/Track/%s" % metadata['id']
 
     if 'time' in metadata:
         metadata['mpris:length'] = int(metadata['time']) * 1000000
@@ -769,6 +770,8 @@ if __name__ == '__main__':
         params['port'] = config.get('Connection', 'port')
     if config.has_option('Connection', 'password'):
         params['password'] = config.get('Connection', 'password')
+    if config.has_option('Connection', 'music_dir'):
+        path = config.get('Connection', 'music_dir')
 
     if 'MPD_HOST' in os.environ:
         params['host'] = os.environ['MPD_HOST']
@@ -811,7 +814,7 @@ if __name__ == '__main__':
     if '@' in params['host']:
         params['password'], params['host'] = params['host'].split('@', 1)
 
-    if path:
+    if os.path.exists(path):
         logger.info('Using %s as music library path' % path)
         if not path.startswith('file://'):
             params['music_dir'] = 'file://' + path
