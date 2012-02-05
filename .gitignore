@@ -8,3 +8,9 @@ missing
 aclocal.m4
 autom4te.cache
 org.mpris.MediaPlayer2.mpd.service
+POTFILES
+*.gmo
+stamp-it
+mpDris2
+mpDris2.py
+
