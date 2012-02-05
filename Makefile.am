@@ -1,4 +1,4 @@
-SUBDIRS = src
+SUBDIRS = src po
 dist_doc_DATA = README COPYING AUTHORS
 
 EXTRA_DIST = autogen.sh

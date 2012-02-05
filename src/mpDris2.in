@@ -31,6 +31,11 @@ from dbus.mainloop.glib import DBusGMainLoop
 import ConfigParser
 import logging
 
+import gettext
+gettext.bindtextdomain('mpDris2', '@datadir@/locale')
+gettext.textdomain('mpDris2')
+_ = gettext.gettext
+
 identity = "Music Player Daemon"
 params = {
     'host': 'localhost',
@@ -240,7 +245,7 @@ class MPDWrapper(mpd.MPDClient):
             if 'urlhandlers' in self.commands():
                 urlhandlers = self.urlhandlers()
             if self._errors > 0:
-                notification.rnotify(identity, 'Reconnected')
+                notification.rnotify(identity, _('Reconnected'))
                 logger.debug('Reconnected to MPD server.')
             else:
                 logger.debug('Connected to MPD server.')
@@ -292,7 +297,7 @@ class MPDWrapper(mpd.MPDClient):
                 self._position = 0
         except (socket.error, mpd.MPDError):
             logger.warning("Disconnected")
-            notification.rnotify(identity, 'Disconnected', 'error')
+            notification.rnotify(identity, _('Disconnected'), 'error')
             # Release the Dbus name
             self._dbus_service.release_name();
             # Disconnect service from the session bus
@@ -315,7 +320,7 @@ class MPDWrapper(mpd.MPDClient):
                     artist = 'Unknown Artist'
                     if 'xesam:artist' in metadata:
                         artist = metadata['xesam:artist'][0]
-                    notification.notify(title, 'by %s' % artist, uri)
+                    notification.notify(title, _('by %s') % artist, uri)
 
             if (abs(self._position - old_position) > 2 and \
                old_status['songid'] == self._status['songid']) or \
@@ -343,17 +348,17 @@ class MPDWrapper(mpd.MPDClient):
         logger.debug('Got GNOME mmkey "%s" for "%s"' % (key, appname))
         if key == 'Play':
             if self._status['state'] == 'play':
-                notification.rnotify(identity, 'Paused')
+                notification.rnotify(identity, _('Paused'))
                 self.pause()
             else:
-                notification.rnotify(identity, 'Playing')
+                notification.rnotify(identity, _('Playing'))
                 self.play()
         elif key == 'Next':
             self.next()
         elif key == 'Previous':
             self.previous()
         elif key == 'Stop':
-            notification.rnotify(identity, 'Stopped')
+            notification.rnotify(identity, _('Stopped'))
             self.stop()
 
 
@@ -563,7 +568,7 @@ class MPRISInterface(dbus.service.Object):
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Pause(self):
         mpd_wrapper.pause()
-        notification.rnotify(identity, 'Paused')
+        notification.rnotify(identity, _('Paused'))
         return
 
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
@@ -571,22 +576,22 @@ class MPRISInterface(dbus.service.Object):
         status = mpd_wrapper.status()
         if status['state'] == 'play':
             mpd_wrapper.pause()
-            notification.rnotify(identity, 'Paused')
+            notification.rnotify(identity, _('Paused'))
         else:
             mpd_wrapper.play()
-            notification.rnotify(identity, 'Playing')
+            notification.rnotify(identity, _('Playing'))
         return
 
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Stop(self):
         mpd_wrapper.stop()
-        notification.rnotify(identity, 'Stopped')
+        notification.rnotify(identity, _('Stopped'))
         return
 
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Play(self):
         mpd_wrapper.play()
-        notification.notify(identity, 'Playing')
+        notification.notify(identity, _('Playing'))
         return
 
     @dbus.service.method(__player_interface, in_signature='x', out_signature='')
