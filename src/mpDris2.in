@@ -235,8 +235,6 @@ class MPDWrapper(mpd.MPDClient):
     def my_connect(self):
         """ Init MPD connection """
         try:
-            # Clean mpd client state
-            self._reset()
             # Connect to host
             self.connect(self._params['host'], self._params['port'])
             if params['password']:
@@ -278,6 +276,20 @@ class MPDWrapper(mpd.MPDClient):
             logger.error('MPD command error: %s' % e)
             return True
 
+    def reconnect(self):
+        logger.warning("Disconnected")
+        notification.rnotify(identity, _('Disconnected'), 'error')
+        # Release the Dbus name
+        self._dbus_service.release_name();
+        # Disconnect service from the session bus
+        self._dbus_service.remove_from_connection();
+        # Stop monitoring
+        gobject.source_remove(self._monitor)
+        # Clean mpd client state
+        self.disconnect()
+        # Try to reconnect
+        self.run()
+
     def init_state(self):
         # Get current state
         self._status = self.status()
@@ -289,56 +301,48 @@ class MPDWrapper(mpd.MPDClient):
     def monitor(self):
         old_status = self._status
         old_position = self._position
-        try:
-            self._status = self.status()
+
+        self._status = self.status()
+
+        if self._status:
+
             if 'time' in self._status:
                 self._position = int(self._status['time'].split(':')[0])
             else:
                 self._position = 0
-        except (socket.error, mpd.MPDError):
-            logger.warning("Disconnected")
-            notification.rnotify(identity, _('Disconnected'), 'error')
-            # Release the Dbus name
-            self._dbus_service.release_name();
-            # Disconnect service from the session bus
-            self._dbus_service.remove_from_connection();
-            # Stop monitoring
-            gobject.source_remove(self._monitor)
-            # Try to reconnect
-            self.run()
 
-        if self._status['state'] != 'stop' and old_status['state'] != 'stop':
-            if old_status['songid'] != self._status['songid']:
-                metadata = self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'Metadata')
-                if self._params['notify']:
-                    uri = 'sound'
-                    if 'mpris:artUrl' in metadata:
-                        uri = metadata['mpris:artUrl']
-                    title = 'Unknown Title'
-                    if 'xesam:title' in metadata:
-                        title = metadata['xesam:title']
-                    artist = 'Unknown Artist'
-                    if 'xesam:artist' in metadata:
-                        artist = metadata['xesam:artist'][0]
-                    notification.notify(title, _('by %s') % artist, uri)
+            if self._status['state'] != 'stop' and old_status['state'] != 'stop':
+                if old_status['songid'] != self._status['songid']:
+                    metadata = self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'Metadata')
+                    if self._params['notify']:
+                        uri = 'sound'
+                        if 'mpris:artUrl' in metadata:
+                            uri = metadata['mpris:artUrl']
+                        title = 'Unknown Title'
+                        if 'xesam:title' in metadata:
+                            title = metadata['xesam:title']
+                        artist = 'Unknown Artist'
+                        if 'xesam:artist' in metadata:
+                            artist = metadata['xesam:artist'][0]
+                        notification.notify(title, _('by %s') % artist, uri)
 
-            if (abs(self._position - old_position) > 2 and \
-               old_status['songid'] == self._status['songid']) or \
-               old_status['songid'] == '-1':
-                self._dbus_service.Seeked(self._position * 1000000)
+                if (abs(self._position - old_position) > 2 and \
+                   old_status['songid'] == self._status['songid']) or \
+                   old_status['songid'] == '-1':
+                    self._dbus_service.Seeked(self._position * 1000000)
 
 
-        if old_status['volume'] != self._status['volume']:
-            self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'Volume')
+            if old_status['volume'] != self._status['volume']:
+                self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'Volume')
 
-        if old_status['state'] != self._status['state']:
-            self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'PlaybackStatus')
+            if old_status['state'] != self._status['state']:
+                self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'PlaybackStatus')
 
-        if old_status['random'] != self._status['random']:
-            self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'Shuffle')
+            if old_status['random'] != self._status['random']:
+                self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'Shuffle')
 
-        if old_status['repeat'] != self._status['repeat']:
-            self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'LoopStatus')
+            if old_status['repeat'] != self._status['repeat']:
+                self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'LoopStatus')
 
         # Return True to continue polling
         return True
@@ -361,6 +365,13 @@ class MPDWrapper(mpd.MPDClient):
             notification.rnotify(identity, _('Stopped'))
             self.stop()
 
+    # Catch connection errors when calling mpd client methods
+    def _execute(self, command, args):
+        try:
+            return mpd.MPDClient._execute(self, command, args)
+        except (socket.error, mpd.MPDError, socket.timeout):
+            self.reconnect()
+            return False
 
 class Notify:
     def __init__(self, params):
