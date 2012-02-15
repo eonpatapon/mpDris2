@@ -31,6 +31,11 @@ from dbus.mainloop.glib import DBusGMainLoop
 import ConfigParser
 import logging
 
+import gettext
+gettext.bindtextdomain('mpDris2', '@datadir@/locale')
+gettext.textdomain('mpDris2')
+_ = gettext.gettext
+
 identity = "Music Player Daemon"
 params = {
     'host': 'localhost',
@@ -188,8 +193,9 @@ MPRIS2_INTROSPECTION = \
 # Default url handlers if MPD doesn't support 'urlhandlers' command
 urlhandlers = [ 'http://' ]
 downloaded_covers = [ '.covers/%s-%s.jpg' ]
-local_covers = [ 'cover.jpg', 'album.jpg', 'front.jpg', 'folder.jpg', 
-    '.folder.jpg', '.folder.png', 'AlbumArt.jpg', 'AlbumArtSmall.jpg' ]
+local_covers = [ 'cover.jpg', 'cover.png', 'album.jpg', 'front.jpg',
+    'folder.jpg', '.folder.jpg', '.folder.png', 'AlbumArt.jpg',
+    'AlbumArtSmall.jpg' ]
 
 
 
@@ -208,10 +214,10 @@ class MPDWrapper(mpd.MPDClient):
         # init mmkeys, if configured
         if self._params['mmkeys']:
             try:
-                gsd_object = dbus.SessionBus().get_object('org.gnome.SettingsDaemon', 
+                gsd_object = dbus.SessionBus().get_object('org.gnome.SettingsDaemon',
                     '/org/gnome/SettingsDaemon/MediaKeys')
                 # this is what gives us the multi media keys.
-                gsd_object.GrabMediaPlayerKeys('mpDris2', 0, 
+                gsd_object.GrabMediaPlayerKeys('mpDris2', 0,
                     dbus_interface='org.gnome.SettingsDaemon.MediaKeys')
                 # connect_to_signal registers our callback function.
                 gsd_object.connect_to_signal('MediaPlayerKeyPressed', self.on_mediakey)
@@ -229,8 +235,6 @@ class MPDWrapper(mpd.MPDClient):
     def my_connect(self):
         """ Init MPD connection """
         try:
-            # Clean mpd client state
-            self._reset()
             # Connect to host
             self.connect(self._params['host'], self._params['port'])
             if params['password']:
@@ -239,7 +243,7 @@ class MPDWrapper(mpd.MPDClient):
             if 'urlhandlers' in self.commands():
                 urlhandlers = self.urlhandlers()
             if self._errors > 0:
-                notification.rnotify(identity, 'Reconnected')
+                notification.rnotify(identity, _('Reconnected'))
                 logger.debug('Reconnected to MPD server.')
             else:
                 logger.debug('Connected to MPD server.')
@@ -250,7 +254,7 @@ class MPDWrapper(mpd.MPDClient):
                 self._dbus_service = MPRISInterface(self._params['music_dir'])
             else:
                 # Add our service to the session bus
-                self._dbus_service.add_to_connection(dbus.SessionBus(), 
+                self._dbus_service.add_to_connection(dbus.SessionBus(),
                     '/org/mpris/MediaPlayer2')
                 self._dbus_service.aquire_name()
             # Init internal state to throw events at start
@@ -272,6 +276,20 @@ class MPDWrapper(mpd.MPDClient):
             logger.error('MPD command error: %s' % e)
             return True
 
+    def reconnect(self):
+        logger.warning("Disconnected")
+        notification.rnotify(identity, _('Disconnected'), 'error')
+        # Release the Dbus name
+        self._dbus_service.release_name();
+        # Disconnect service from the session bus
+        self._dbus_service.remove_from_connection();
+        # Stop monitoring
+        gobject.source_remove(self._monitor)
+        # Clean mpd client state
+        self.disconnect()
+        # Try to reconnect
+        self.run()
+
     def init_state(self):
         # Get current state
         self._status = self.status()
@@ -283,56 +301,48 @@ class MPDWrapper(mpd.MPDClient):
     def monitor(self):
         old_status = self._status
         old_position = self._position
-        try:
-            self._status = self.status()
+
+        self._status = self.status()
+
+        if type(self._status) == type(dict()):
+
             if 'time' in self._status:
                 self._position = int(self._status['time'].split(':')[0])
             else:
                 self._position = 0
-        except (socket.error, mpd.MPDError):
-            logger.warning("Disconnected")
-            notification.rnotify(identity, 'Disconnected', 'error')
-            # Release the Dbus name
-            self._dbus_service.release_name();
-            # Disconnect service from the session bus
-            self._dbus_service.remove_from_connection();
-            # Stop monitoring
-            gobject.source_remove(self._monitor)
-            # Try to reconnect
-            self.run()
 
-        if self._status['state'] != 'stop' and old_status['state'] != 'stop':
-            if old_status['songid'] != self._status['songid']:
-                metadata = self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'Metadata')
-                if self._params['notify']:
-                    uri = 'sound'
-                    if 'mpris:artUrl' in metadata:
-                        uri = metadata['mpris:artUrl']
-                    title = 'Unknown Title'
-                    if 'xesam:title' in metadata:
-                        title = metadata['xesam:title']
-                    artist = 'Unknown Artist'
-                    if 'xesam:artist' in metadata:
-                        artist = metadata['xesam:artist'][0]
-                    notification.notify(title, 'by %s' % artist, uri)
+            if self._status['state'] != 'stop' and old_status['state'] != 'stop':
+                if old_status['songid'] != self._status['songid']:
+                    metadata = self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'Metadata')
+                    if self._params['notify']:
+                        uri = 'sound'
+                        if 'mpris:artUrl' in metadata:
+                            uri = metadata['mpris:artUrl']
+                        title = 'Unknown Title'
+                        if 'xesam:title' in metadata:
+                            title = metadata['xesam:title']
+                        artist = 'Unknown Artist'
+                        if 'xesam:artist' in metadata:
+                            artist = metadata['xesam:artist'][0]
+                        notification.notify(title, _('by %s') % artist, uri)
 
-            if (abs(self._position - old_position) > 2 and \
-               old_status['songid'] == self._status['songid']) or \
-               old_status['songid'] == '-1':
-                self._dbus_service.Seeked(self._position * 1000000)
-                    
+                if (abs(self._position - old_position) > 2 and \
+                   old_status['songid'] == self._status['songid']) or \
+                   old_status['songid'] == '-1':
+                    self._dbus_service.Seeked(self._position * 1000000)
 
-        if old_status['volume'] != self._status['volume']:
-            self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'Volume')
 
-        if old_status['state'] != self._status['state']:
-            self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'PlaybackStatus')
+            if old_status['volume'] != self._status['volume']:
+                self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'Volume')
 
-        if old_status['random'] != self._status['random']:
-            self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'Shuffle')
+            if old_status['state'] != self._status['state']:
+                self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'PlaybackStatus')
 
-        if old_status['repeat'] != self._status['repeat']:
-            self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'LoopStatus')
+            if old_status['random'] != self._status['random']:
+                self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'Shuffle')
+
+            if old_status['repeat'] != self._status['repeat']:
+                self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'LoopStatus')
 
         # Return True to continue polling
         return True
@@ -342,19 +352,26 @@ class MPDWrapper(mpd.MPDClient):
         logger.debug('Got GNOME mmkey "%s" for "%s"' % (key, appname))
         if key == 'Play':
             if self._status['state'] == 'play':
-                notification.rnotify(identity, 'Paused')
+                notification.rnotify(identity, _('Paused'))
                 self.pause()
             else:
-                notification.rnotify(identity, 'Playing')
+                notification.rnotify(identity, _('Playing'))
                 self.play()
         elif key == 'Next':
             self.next()
         elif key == 'Previous':
             self.previous()
         elif key == 'Stop':
-            notification.rnotify(identity, 'Stopped')
+            notification.rnotify(identity, _('Stopped'))
             self.stop()
 
+    # Catch connection errors when calling mpd client methods
+    def _execute(self, command, args):
+        try:
+            return mpd.MPDClient._execute(self, command, args)
+        except (socket.error, mpd.MPDError, socket.timeout):
+            self.reconnect()
+            return False
 
 class Notify:
     def __init__(self, params):
@@ -380,7 +397,7 @@ class Notify:
         if self._notification:
             self._notification.update(title, body, uri)
             self._notification.show()
-        
+
 
 class MPRISInterface(dbus.service.Object):
     ''' The base object of an MPRIS player '''
@@ -391,13 +408,13 @@ class MPRISInterface(dbus.service.Object):
     __prop_interface = dbus.PROPERTIES_IFACE
 
     def __init__(self, bus, path = ""):
-        dbus.service.Object.__init__(self, dbus.SessionBus(), 
+        dbus.service.Object.__init__(self, dbus.SessionBus(),
             MPRISInterface.__path)
         self.path = path
         self.aquire_name()
 
     def aquire_name(self):
-        self._bus_name = dbus.service.BusName(MPRISInterface.__name, 
+        self._bus_name = dbus.service.BusName(MPRISInterface.__name,
             bus=dbus.SessionBus())
 
     def release_name(self):
@@ -562,7 +579,7 @@ class MPRISInterface(dbus.service.Object):
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Pause(self):
         mpd_wrapper.pause()
-        notification.rnotify(identity, 'Paused')
+        notification.rnotify(identity, _('Paused'))
         return
 
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
@@ -570,22 +587,22 @@ class MPRISInterface(dbus.service.Object):
         status = mpd_wrapper.status()
         if status['state'] == 'play':
             mpd_wrapper.pause()
-            notification.rnotify(identity, 'Paused')
+            notification.rnotify(identity, _('Paused'))
         else:
             mpd_wrapper.play()
-            notification.rnotify(identity, 'Playing')
+            notification.rnotify(identity, _('Playing'))
         return
 
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Stop(self):
         mpd_wrapper.stop()
-        notification.rnotify(identity, 'Stopped')
+        notification.rnotify(identity, _('Stopped'))
         return
 
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Play(self):
         mpd_wrapper.play()
-        notification.notify(identity, 'Playing')
+        notification.notify(identity, _('Playing'))
         return
 
     @dbus.service.method(__player_interface, in_signature='x', out_signature='')
@@ -632,7 +649,8 @@ def handle_sigint(signum, frame):
 def format_metadata(metadata):
     """http://xmms2.org/wiki/MPRIS_Metadata"""
 
-    metadata['mpris:trackid'] = "/org/mpris/MediaPlayer2/Track/%s" % metadata['id']
+    if 'id' in metadata:
+        metadata['mpris:trackid'] = "/org/mpris/MediaPlayer2/Track/%s" % metadata['id']
 
     if 'time' in metadata:
         metadata['mpris:length'] = int(metadata['time']) * 1000000
@@ -645,13 +663,13 @@ def format_metadata(metadata):
 
     if 'track' in metadata:
         if re.match('^([0-9]+).*', metadata['track']):
-            metadata['xesam:trackNumber'] = int(re.match('^([0-9]+).*', 
+            metadata['xesam:trackNumber'] = int(re.match('^([0-9]+).*',
                 metadata['track']).group(1))
         else:
             metadata['xesam:trackNumber'] = 0
 
     if 'disc' in metadata:
-        metadata['xesam:discNumber'] = int(re.match('^([0-9]+).*', 
+        metadata['xesam:discNumber'] = int(re.match('^([0-9]+).*',
             metadata['disc']).group(1))
 
     if 'artist' in metadata:
@@ -764,6 +782,8 @@ if __name__ == '__main__':
         params['port'] = config.get('Connection', 'port')
     if config.has_option('Connection', 'password'):
         params['password'] = config.get('Connection', 'password')
+    if config.has_option('Connection', 'music_dir'):
+        path = config.get('Connection', 'music_dir')
 
     if 'MPD_HOST' in os.environ:
         params['host'] = os.environ['MPD_HOST']
@@ -780,7 +800,7 @@ if __name__ == '__main__':
 
     log_format = '%(asctime)s %(module)s %(levelname)s: %(message)s'
     log_level = logging.INFO
-    
+
     for (opt, arg) in opts:
         if opt in ['-h', '--help']:
             usage(params)
@@ -791,7 +811,7 @@ if __name__ == '__main__':
             log_level = logging.DEBUG
 
     logging.basicConfig(format=log_format, level=log_level)
-    logger = logging.getLogger('mpDris2')     
+    logger = logging.getLogger('mpDris2')
 
     if len(args) > 2:
         usage(params)
@@ -806,7 +826,7 @@ if __name__ == '__main__':
     if '@' in params['host']:
         params['password'], params['host'] = params['host'].split('@', 1)
 
-    if path:
+    if os.path.exists(path):
         logger.info('Using %s as music library path' % path)
         if not path.startswith('file://'):
             params['music_dir'] = 'file://' + path
