@@ -240,6 +240,7 @@ class MPDWrapper(mpd.MPDClient):
             if params['password']:
                 self.password(self._params['password'])
             # Get URL handlers supported by MPD
+            global urlhandlers
             if 'urlhandlers' in self.commands():
                 urlhandlers = self.urlhandlers()
             if self._errors > 0:
