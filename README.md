@@ -13,17 +13,17 @@ mpDris2 is run in the user session and monitors a local or distant mpd server.
   make install (as root)
 
 Logout/login from your session.
-Default prefix is /usr/local.
+Default prefix is ``/usr/local``.
 
 # Configuration
 
 By default, mpDris2 will try to connect to localhost:6600.
 
 To set a different host or port copy the example configuration file 
-/usr/[local]/share/doc/mpdris2/mpDris2.conf to ~/.config/mpDris2/mpDris2.conf.
+``/usr/[local]/share/doc/mpdris2/mpDris2.conf`` to ``~/.config/mpDris2/mpDris2.conf``.
 
 Use the configuration to enable notifications and multimedia keys support.
-You need also to set the 'music_dir' option for mpDris2 to export covers
+You need also to set the ``music_dir`` option for mpDris2 to export covers
 paths in the MPRIS metadata.
 
 Restart your session or mpDris2 after changing mpDris2.conf.
