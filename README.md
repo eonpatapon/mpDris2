@@ -6,11 +6,11 @@ mpDris2 is run in the user session and monitors a local or distant mpd server.
 
 # Installation
 
-  git clone git://github.com/eonpatapon/mpDris2.git
-  cd mpDris2
-  ./autogen.sh
-  ./configure --sysconfdir=/etc
-  make install (as root)
+    git clone git://github.com/eonpatapon/mpDris2.git
+    cd mpDris2
+    ./autogen.sh
+    ./configure --sysconfdir=/etc
+    make install (as root)
 
 Logout/login from your session.
 Default prefix is ``/usr/local``.
@@ -30,11 +30,11 @@ Restart your session or mpDris2 after changing mpDris2.conf.
 
 ## Sample configuration
 
-  [Connection]
-  host = 192.168.1.5
-  port = 6600
-  music_dir = /media/music/
+    [Connection]
+    host = 192.168.1.5
+    port = 6600
+    music_dir = /media/music/
 
-  [Bling]
-  notify = False
-  mmkeys = True
+    [Bling]
+    notify = False
+    mmkeys = True
