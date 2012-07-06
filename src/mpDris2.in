@@ -57,7 +57,7 @@ notification = None
 
 # MPRIS allowed metadata tags
 allowed_tags = {
-    'mpris:trackid': str,
+    'mpris:trackid': dbus.ObjectPath,
     'mpris:length': long,
     'mpris:artUrl': str,
     'xesam:album': str,
@@ -465,9 +465,9 @@ class MPRISInterface(dbus.service.Object):
     def __get_volume():
         vol = float(mpd_wrapper.status()['volume'])
         if vol > 0:
-            return vol / 100
+            return vol / 100.0
         else:
-            return 0
+            return 0.0
 
     def __set_volume(value):
         if value >= 0 and value <= 1:
@@ -492,13 +492,13 @@ class MPRISInterface(dbus.service.Object):
     __player_props = {
         "PlaybackStatus": (__get_playback_status, None),
         "LoopStatus": (__get_loop_status, __set_loop_status),
-        #~ "Rate": (1.0, None),
+        "Rate": (1.0, None),
         "Shuffle": (__get_shuffle, __set_shuffle),
         "Metadata": (__get_metadata, None),
         "Volume": (__get_volume, __set_volume),
         "Position": (__get_position, None),
-        #~ "MinimumRate": (1.0, None),
-        #~ "MaximumRate": (1.0, None),
+        "MinimumRate": (1.0, None),
+        "MaximumRate": (1.0, None),
         "CanGoNext": (__can_next, None),
         "CanGoPrevious": (True, None),
         "CanPlay": (True, None),
