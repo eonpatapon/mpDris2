@@ -311,8 +311,8 @@ class MPDWrapper(mpd.MPDClient):
             else:
                 self._position = 0
 
-            if self._status['state'] != 'stop' and old_status['state'] != 'stop':
-                if old_status['songid'] != self._status['songid']:
+            if self._status['state'] != 'stop':
+                if not 'songid' in old_status or old_status['songid'] != self._status['songid']:
                     metadata = self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'Metadata')
                     if self._params['notify']:
                         uri = 'sound'
@@ -328,6 +328,7 @@ class MPDWrapper(mpd.MPDClient):
 
                 if (abs(self._position - old_position) > 2 and \
                    old_status['songid'] == self._status['songid']) or \
+                   not 'songid' in old_status or \
                    old_status['songid'] == '-1':
                     self._dbus_service.Seeked(self._position * 1000000)
 
