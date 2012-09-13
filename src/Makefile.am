@@ -14,7 +14,7 @@ CLEANFILES = org.mpris.MediaPlayer2.mpd.service mpDris2.py mpDris2
 edit = sed -e 's|@bindir[@]|$(bindir)|g' \
 	   -e 's|@datadir[@]|$(datadir)|g'
 
-mpDris2: Makefile
+mpDris2: mpDris2.in Makefile
 	rm -f $@ $@.tmp
 	$(MKDIR_P) $(@D)
 	srcdir=''
@@ -23,7 +23,7 @@ mpDris2: Makefile
 	mv $@.tmp $@
 	ln -sf $@ $@.py
 
-org.mpris.MediaPlayer2.mpd.service: Makefile
+org.mpris.MediaPlayer2.mpd.service: org.mpris.MediaPlayer2.mpd.service.in Makefile
 	rm -f $@ $@.tmp
 	$(MKDIR_P) $(@D)
 	srcdir=''
