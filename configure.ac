@@ -1,5 +1,5 @@
-AC_INIT(mpDris2, 0.2)
-AM_INIT_AUTOMAKE(mpDris2, 0.2, [https://github.com/eonpatapon/mpDris2])
+AC_INIT(mpDris2, 0.3)
+AM_INIT_AUTOMAKE(mpDris2, 0.3, [https://github.com/eonpatapon/mpDris2])
 AM_PATH_PYTHON([2.5],, [:])
 GETTEXT_PACKAGE=mpDris2
 AC_SUBST(GETTEXT_PACKAGE)
