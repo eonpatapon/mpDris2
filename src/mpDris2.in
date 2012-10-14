@@ -669,6 +669,9 @@ def format_metadata(metadata):
             track = str(metadata['track'])
         if re.match('^([0-9]+).*', track):
             metadata['xesam:trackNumber'] = int(re.match('^([0-9]+).*', track).group(1))
+            # Ensure the integer is signed 32bit
+            if metadata['xesam:trackNumber'] & 0x80000000:
+                metadata['xesam:trackNumber'] += -0x100000000
         else:
             metadata['xesam:trackNumber'] = 0
 
