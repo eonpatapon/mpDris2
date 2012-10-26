@@ -2,7 +2,7 @@ desktopdir = ${datadir}/applications/
 dbusdir = ${datadir}/dbus-1/services/
 autostartdir = ${sysconfdir}/xdg/autostart/
 
-dist_bin_SCRIPTS = mpDris2
+bin_SCRIPTS = mpDris2
 dist_desktop_DATA = mpDris2.desktop
 autostart_DATA = mpDris2.desktop
 dist_doc_DATA = mpDris2.conf
