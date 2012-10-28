@@ -738,13 +738,37 @@ def format_metadata(metadata):
 
     return dbus.Dictionary(metadata, signature='sv')
 
+def each_xdg_config(suffix):
+    """Return each location matching XDG_CONFIG_DIRS/suffix in descending
+    priority order.
+    """
+    config_home = os.environ.get('XDG_CONFIG_HOME',
+            os.path.expanduser('~/.config'))
+    config_dirs = os.environ.get('XDG_CONFIG_DIRS', '/etc/xdg').split(':')
+    return ([os.path.join(config_home, suffix)] +
+            [os.path.join(d, suffix) for d in config_dirs])
+
+def open_first_xdg_config(suffix):
+    """Try to open each location matching XDG_CONFIG_DIRS/suffix as a file.
+    Return the first that can be opened successfully, or None.
+    """
+    for filename in each_xdg_config(suffix):
+        try:
+            f = open(filename, 'r')
+        except IOError:
+            pass
+        else:
+            return f
+    else:
+        return None
+
 def find_music_dir():
     if 'XDG_MUSIC_DIR' in os.environ:
         return os.environ['XDG_MUSIC_DIR']
 
-    conf = os.path.expanduser('~/.config/user-dirs.dirs')
-    try:
-        for line in open(conf, 'r'):
+    conf = open_first_xdg_config('user-dirs.dirs')
+    if conf is not None:
+        for line in conf:
             if not line.startswith('XDG_MUSIC_DIR='):
                 continue
             # use shlex to handle "shell escaping"
@@ -755,8 +779,6 @@ def find_music_dir():
                 return path
             else:
                 continue # other forms are not supported
-    except IOError:
-        pass
 
     paths = '~/Music', '~/music'
     for path in map(os.path.expanduser, paths):
@@ -785,7 +807,8 @@ if __name__ == '__main__':
     path = find_music_dir()
 
     config = ConfigParser.SafeConfigParser()
-    config.read(['/etc/mpDris2.conf', os.path.expanduser('~/.config/mpDris2/mpDris2.conf')])
+    config.read(['/etc/mpDris2.conf'] +
+            list(reversed(each_xdg_config('mpDris2/mpDris2.conf'))))
 
     if config.has_option('Connection', 'host'):
         params['host'] = config.get('Connection', 'host')
