@@ -865,6 +865,8 @@ if __name__ == '__main__':
         if not path.startswith('file://'):
             params['music_dir'] = 'file://' + path
     else:
+        if path and not os.path.exists(path):
+            logger.error('%s does not exists. Ignoring.' % path )
         logger.warning('By not supplying a path for the music library ' \
             'this program will break the MPRIS specification!')
 
