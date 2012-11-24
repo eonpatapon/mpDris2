@@ -190,13 +190,11 @@ MPRIS2_INTROSPECTION = \
   </interface>
 </node>"""
 
-
 # Default url handlers if MPD doesn't support 'urlhandlers' command
 urlhandlers = [ 'http://' ]
 downloaded_covers = [ '.covers/%s-%s.jpg' ]
-local_covers = [ 'cover.jpg', 'cover.png', 'album.jpg', 'front.jpg',
-    'folder.jpg', '.folder.jpg', '.folder.png', 'AlbumArt.jpg',
-    'AlbumArtSmall.jpg' ]
+covers_names = [ 'cover', 'front', 'album', 'folder', '.folder', 'Album' ]
+covers_exts = [ 'jpg', 'png', 'jpeg', 'gif' ]
 
 # Wrapper to handle socket errors and similar
 class MPDWrapper(mpd.MPDClient):
@@ -704,7 +702,7 @@ def format_metadata(metadata):
             cover = False
             if os.path.exists(basedirpath):
                 for f in os.listdir(basedirpath):
-                    if f in local_covers:
+                    if f.startswith(covers_names) and f.endswith(covers_exts):
                         cover = 'file://' + os.path.join(basedirpath, f)
                 if not cover and 'artist' in metadata and 'album' in metadata:
                     for f in downloaded_covers:
