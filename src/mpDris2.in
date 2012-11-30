@@ -23,7 +23,6 @@ import shlex
 import signal
 import socket
 import getopt
-import types
 import mpd
 import gobject
 import dbus
@@ -39,11 +38,14 @@ _ = gettext.gettext
 
 identity = "Music Player Daemon"
 params = {
+    'progname': sys.argv[0],
+    # Connection
     'host': 'localhost',
     'port': 6600,
     'password': None,
-    'progname': sys.argv[0],
+    # Library
     'music_dir': '',
+    # Bling
     'mmkeys': True,
     'notify': True,
 }
@@ -302,7 +304,7 @@ class MPDWrapper(mpd.MPDClient):
 
         self._status = self.status()
 
-        if type(self._status) == types.DictType:
+        if type(self._status) == dict:
 
             if 'time' in self._status:
                 self._position = int(self._status['time'].split(':')[0])
@@ -385,13 +387,13 @@ class Notify:
         else:
             self._notification = False
 
-    def notify(self, title, body, uri = ''):
+    def notify(self, title, body, uri=''):
         """ Issue a new notification """
         if self._notification:
             self._notification = pynotify.Notification(title, body, uri)
             self._notification.show()
 
-    def rnotify(self, title, body, uri = ''):
+    def rnotify(self, title, body, uri=''):
         """ Replace current notification """
         if self._notification:
             self._notification.update(title, body, uri)
@@ -406,7 +408,7 @@ class MPRISInterface(dbus.service.Object):
     __introspect_interface = "org.freedesktop.DBus.Introspectable"
     __prop_interface = dbus.PROPERTIES_IFACE
 
-    def __init__(self, bus, path = ""):
+    def __init__(self, bus, path=""):
         dbus.service.Object.__init__(self, dbus.SessionBus(),
             MPRISInterface.__path)
         self.path = path
@@ -509,7 +511,8 @@ class MPRISInterface(dbus.service.Object):
 
     __prop_mapping = {
         __player_interface: __player_props,
-        __root_interface: __root_props}
+        __root_interface: __root_props,
+    }
 
     @dbus.service.method(__introspect_interface)
     def Introspect(self):
@@ -743,7 +746,8 @@ def format_metadata(metadata):
     return dbus.Dictionary(metadata, signature='sv')
 
 def each_xdg_config(suffix):
-    """Return each location matching XDG_CONFIG_DIRS/suffix in descending
+    """
+    Return each location matching XDG_CONFIG_DIRS/suffix in descending
     priority order.
     """
     config_home = os.environ.get('XDG_CONFIG_HOME',
@@ -753,7 +757,8 @@ def each_xdg_config(suffix):
             [os.path.join(d, suffix) for d in config_dirs])
 
 def open_first_xdg_config(suffix):
-    """Try to open each location matching XDG_CONFIG_DIRS/suffix as a file.
+    """
+    Try to open each location matching XDG_CONFIG_DIRS/suffix as a file.
     Return the first that can be opened successfully, or None.
     """
     for filename in each_xdg_config(suffix):
@@ -776,13 +781,13 @@ def find_music_dir():
             if not line.startswith('XDG_MUSIC_DIR='):
                 continue
             # use shlex to handle "shell escaping"
-            path = shlex.split(line)[0][14:]
+            path = shlex.split(line[14:])[0]
             if path.startswith('$HOME/'):
                 return os.path.expanduser('~' + path[5:])
             elif path.startswith('/'):
                 return path
             else:
-                continue # other forms are not supported
+                break # other forms are not supported
 
     paths = '~/Music', '~/music'
     for path in map(os.path.expanduser, paths):
@@ -808,7 +813,7 @@ Report bugs to https://github.com/eonpatapon/mpDris2/issues""" % params
 if __name__ == '__main__':
     DBusGMainLoop(set_as_default=True)
 
-    path = find_music_dir()
+    music_dir = find_music_dir()
 
     config = ConfigParser.SafeConfigParser()
     config.read(['/etc/mpDris2.conf'] +
@@ -821,12 +826,16 @@ if __name__ == '__main__':
     if config.has_option('Connection', 'password'):
         params['password'] = config.get('Connection', 'password')
     if config.has_option('Connection', 'music_dir'):
-        path = config.get('Connection', 'music_dir')
+        music_dir = config.get('Connection', 'music_dir')
 
     if 'MPD_HOST' in os.environ:
         params['host'] = os.environ['MPD_HOST']
     if 'MPD_PORT' in os.environ:
         params['port'] = os.environ['MPD_PORT']
+
+    for bling in ['mmkeys','notify']:
+        if config.has_option('Bling', bling):
+            params[bling] = config.getboolean('Bling', bling)
 
     try:
         (opts, args) = getopt.getopt(sys.argv[1:], 'hdp:', ['help', 'debug', 'path='])
@@ -844,7 +853,7 @@ if __name__ == '__main__':
             usage(params)
             sys.exit()
         elif opt in ['-p', '--path']:
-            path = arg
+            music_dir = arg
         elif opt in ['-d', '--debug']:
             log_level = logging.DEBUG
 
@@ -864,19 +873,15 @@ if __name__ == '__main__':
     if '@' in params['host']:
         params['password'], params['host'] = params['host'].split('@', 1)
 
-    if path and os.path.exists(path):
-        logger.info('Using %s as music library path' % path)
-        if not path.startswith('file://'):
-            params['music_dir'] = 'file://' + path
+    if music_dir and os.path.exists(music_dir):
+        logger.info('Using %s as music library path' % music_dir)
+        if not music_dir.startswith('file://'):
+            params['music_dir'] = 'file://' + music_dir
     else:
-        if path and not os.path.exists(path):
-            logger.error('%s does not exists. Ignoring.' % path )
+        if music_dir and not os.path.exists(music_dir):
+            logger.error('%s does not exists. Ignoring.' % music_dir )
         logger.warning('By not supplying a path for the music library ' \
             'this program will break the MPRIS specification!')
-
-    for bling in ['mmkeys','notify']:
-        if config.has_option('Bling', bling):
-            params[bling] = config.getboolean('Bling', bling)
 
     loop = gobject.MainLoop()
     signal.signal(signal.SIGINT, handle_sigint)
