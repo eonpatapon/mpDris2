@@ -321,7 +321,7 @@ class MPDWrapper(mpd.MPDClient):
                             title = metadata['xesam:title']
                         artist = 'Unknown Artist'
                         if 'xesam:artist' in metadata:
-                            artist = metadata['xesam:artist'][0]
+                            artist = ", ".join(metadata['xesam:artist'])
                         notification.notify(title, _('by %s') % artist, uri)
 
                 if (abs(self._position - old_position) > 2 and \
