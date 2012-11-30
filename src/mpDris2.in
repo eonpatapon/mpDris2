@@ -193,8 +193,8 @@ MPRIS2_INTROSPECTION = \
 # Default url handlers if MPD doesn't support 'urlhandlers' command
 urlhandlers = [ 'http://' ]
 downloaded_covers = [ '.covers/%s-%s.jpg' ]
-covers_names = [ 'cover', 'front', 'album', 'folder', '.folder', 'Album' ]
-covers_exts = [ 'jpg', 'png', 'jpeg', 'gif' ]
+covers_names = ( 'cover', 'front', 'album', 'folder', '.folder', 'Album', )
+covers_exts = ( 'jpg', 'png', 'jpeg', 'gif', )
 
 # Wrapper to handle socket errors and similar
 class MPDWrapper(mpd.MPDClient):
@@ -321,7 +321,7 @@ class MPDWrapper(mpd.MPDClient):
                             title = metadata['xesam:title']
                         artist = 'Unknown Artist'
                         if 'xesam:artist' in metadata:
-                            artist = metadata['xesam:artist'][0]
+                            artist = ", ".join(metadata['xesam:artist'])
                         notification.notify(title, _('by %s') % artist, uri)
 
                 if (abs(self._position - old_position) > 2 and \
@@ -682,10 +682,16 @@ def format_metadata(metadata):
             metadata['xesam:discNumber'] = int(re.match('^([0-9]+).*', disc).group(1))
 
     if 'artist' in metadata:
-        metadata['xesam:artist'] = [metadata['artist'],]
+        if type(metadata['artist']) is list:
+            metadata['xesam:artist'] = metadata['artist']
+        else:
+            metadata['xesam:artist'] = [metadata['artist'],]
 
     if 'composer' in metadata:
-        metadata['xesam:composer'] = [metadata['composer'],]
+        if type(metadata['composer']) is list:
+            metadata['xesam:composer'] = metadata['composer']
+        else:
+            metadata['xesam:composer'] = [metadata['composer'],]
 
     mpd_tags = ('album', 'title')
     for tag in mpd_tags:
