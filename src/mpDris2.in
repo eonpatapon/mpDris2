@@ -682,10 +682,16 @@ def format_metadata(metadata):
             metadata['xesam:discNumber'] = int(re.match('^([0-9]+).*', disc).group(1))
 
     if 'artist' in metadata:
-        metadata['xesam:artist'] = [metadata['artist'],]
+        if type(metadata['artist']) is list:
+            metadata['xesam:artist'] = metadata['artist']
+        else:
+            metadata['xesam:artist'] = [metadata['artist'],]
 
     if 'composer' in metadata:
-        metadata['xesam:composer'] = [metadata['composer'],]
+        if type(metadata['composer']) is list:
+            metadata['xesam:composer'] = metadata['composer']
+        else:
+            metadata['xesam:composer'] = [metadata['composer'],]
 
     mpd_tags = ('album', 'title')
     for tag in mpd_tags:
