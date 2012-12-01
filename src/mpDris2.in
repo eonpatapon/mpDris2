@@ -883,13 +883,17 @@ if __name__ == '__main__':
     if '@' in params['host']:
         params['password'], params['host'] = params['host'].split('@', 1)
 
-    if music_dir and os.path.exists(music_dir):
-        logger.info('Using %s as music library path' % music_dir)
-        if not music_dir.startswith('file://'):
-            params['music_dir'] = 'file://' + music_dir
+    if music_dir:
+        # Ensure that music_dir starts with an URL scheme.
+        if not re.match('^[0-9A-Za-z+.-]+://', music_dir):
+            music_dir = 'file://' + music_dir
+        if music_dir.startswith('file://'):
+            if not os.path.exists(music_dir[7:]):
+                logger.error('Music library path %s does not exist!' % music_dir)
+        # Non-local URLs can still be useful to MPRIS clients, so accept them.
+        params['music_dir'] = music_dir
+        logger.info('Using %s as music library path.' % music_dir)
     else:
-        if music_dir and not os.path.exists(music_dir):
-            logger.error('%s does not exists. Ignoring.' % music_dir )
         logger.warning('By not supplying a path for the music library ' \
             'this program will break the MPRIS specification!')
 
