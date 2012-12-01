@@ -9,7 +9,7 @@ mpDris2 is run in the user session and monitors a local or distant mpd server.
 In order for it to properly install you need autoconf, libtool and intltool.
 You can get those with
 
-   ``$ sudo apt-get install autoconf libtool intltool``
+   ``sudo apt-get install autoconf libtool intltool``
 
 ## Stable realase
 
