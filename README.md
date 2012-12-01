@@ -5,7 +5,10 @@ mpDris2 provide MPRIS 2 support to mpd (Music Player Daemon).
 mpDris2 is run in the user session and monitors a local or distant mpd server.
 
 # Installation
-
+##Installation on Ubuntu
+In order for it to properly install you need autoconf, libtool and intltool.
+You can get those with
+   $ sudo apt-get install autoconf libtool intltool
 ## Stable realase
 
 Download the latest release at https://github.com/eonpatapon/mpDris2/downloads
