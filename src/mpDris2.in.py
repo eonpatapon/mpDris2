@@ -80,6 +80,9 @@ params = {
     'password': None,
     # Library
     'music_dir': '',
+    'cover_regex': re.compile(
+                    r'^ (album|cover|\.?folder|front) .* \.(gif|jpe?g|png) $',
+                    re.I | re.X)
     # Bling
     'mmkeys': True,
     'notify': (using_gi_notify or using_old_notify),
@@ -223,9 +226,6 @@ MPRIS2_INTROSPECTION = """<node name="/org/mpris/MediaPlayer2">
 # Default url handlers if MPD doesn't support 'urlhandlers' command
 urlhandlers = ['http://']
 downloaded_covers = ['~/.covers/%s-%s.jpg']
-covers_names = ('cover', 'front', 'album', 'folder', '.folder', 'Album',)
-covers_exts = ('jpg', 'png', 'jpeg', 'gif',)
-
 
 class MPDWrapper(object):
     """ Wrapper of mpd.MPDClient to handle socket
@@ -579,7 +579,7 @@ class MPDWrapper(object):
             # Look in song directory for common album cover files
             if os.path.exists(song_dir):
                 for f in os.listdir(song_dir):
-                    if f.startswith(covers_names) and f.endswith(covers_exts):
+                    if params['cover_regex'].match(f):
                         return 'file://' + os.path.join(song_dir, f)
 
             # Search the shared cover directories
@@ -1181,6 +1181,9 @@ if __name__ == '__main__':
         params['host'] = os.environ['MPD_HOST']
     if 'MPD_PORT' in os.environ:
         params['port'] = os.environ['MPD_PORT']
+
+    if config.has_option('Library', 'cover_regex'):
+        params['cover_regex'] = re.compile(config.get('Library', 'cover_regex'), re.I | re.X)
 
     for bling in ['mmkeys', 'notify']:
         if config.has_option('Bling', bling):
