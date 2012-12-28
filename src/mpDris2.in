@@ -668,82 +668,81 @@ def find_cover(song_url, metadata):
 
     return None
 
-def format_metadata(metadata):
+def format_metadata(mpd_meta):
     """
     Translate metadata returned by MPD to the MPRIS v2 syntax.
     http://www.freedesktop.org/wiki/Specifications/mpris-spec/metadata
     """
 
-    if 'id' in metadata:
-        metadata['mpris:trackid'] = "/org/mpris/MediaPlayer2/Track/%s" % metadata['id']
+    metadata = {}
 
-    if 'time' in metadata:
-        metadata['mpris:length'] = int(metadata['time']) * 1000000
+    for tag in ('album', 'title'):
+        if tag in mpd_meta:
+            metadata['xesam:%s' % tag] = mpd_meta[tag]
 
-    if 'date' in metadata:
-        if len(metadata['date']) is 4:
-            metadata['xesam:contentCreated'] = metadata['date']
+    if 'id' in mpd_meta:
+        metadata['mpris:trackid'] = "/org/mpris/MediaPlayer2/Track/%s" % mpd_meta['id']
+
+    if 'time' in mpd_meta:
+        metadata['mpris:length'] = int(mpd_meta['time']) * 1000000
+
+    if 'date' in mpd_meta:
+        metadata['xesam:contentCreated'] = mpd_meta['date'][0:4]
+
+    if 'track' in mpd_meta:
+        # TODO: Is it even *possible* for mpd_meta['track'] to be a list?
+        if type(mpd_meta['track']) == list and len(mpd_meta['track']) > 0:
+            track = str(mpd_meta['track'][0])
         else:
-            metadata['xesam:contentCreated'] = metadata['date'][0:4]
+            track = str(mpd_meta['track'])
 
-    if 'track' in metadata:
-        if type(metadata['track']) == list and len(metadata['track']) > 0:
-            track = str(metadata['track'][0])
-        else:
-            track = str(metadata['track'])
-        if re.match('^([0-9]+).*', track):
-            metadata['xesam:trackNumber'] = int(re.match('^([0-9]+).*', track).group(1))
+        m = re.match('^([0-9]+)', track)
+        if m:
+            metadata['xesam:trackNumber'] = int(m.group(1))
             # Ensure the integer is signed 32bit
             if metadata['xesam:trackNumber'] & 0x80000000:
                 metadata['xesam:trackNumber'] += -0x100000000
         else:
             metadata['xesam:trackNumber'] = 0
 
-    if 'disc' in metadata:
-        if type(metadata['disc']) == list and len(metadata['disc']) > 0:
-            disc = str(metadata['disc'][0])
+    if 'disc' in mpd_meta:
+        # TODO: Same as above. When is it a list?
+        if type(mpd_meta['disc']) == list and len(mpd_meta['disc']) > 0:
+            disc = str(mpd_meta['disc'][0])
         else:
-            disc = str(metadata['disc'])
-        if re.match('^([0-9]+).*', disc):
-            metadata['xesam:discNumber'] = int(re.match('^([0-9]+).*', disc).group(1))
+            disc = str(mpd_meta['disc'])
 
-    if 'artist' in metadata:
-        if type(metadata['artist']) is list:
-            metadata['xesam:artist'] = metadata['artist']
+        m = re.match('^([0-9]+)', disc)
+        if m:
+            metadata['xesam:discNumber'] = int(m.group(1))
+
+    if 'artist' in mpd_meta:
+        if type(mpd_meta['artist']) == list:
+            metadata['xesam:artist'] = mpd_meta['artist']
         else:
-            metadata['xesam:artist'] = [metadata['artist'],]
+            metadata['xesam:artist'] = [mpd_meta['artist']]
 
-    if 'composer' in metadata:
-        if type(metadata['composer']) is list:
-            metadata['xesam:composer'] = metadata['composer']
+    if 'composer' in mpd_meta:
+        if type(mpd_meta['composer']) == list:
+            metadata['xesam:composer'] = mpd_meta['composer']
         else:
-            metadata['xesam:composer'] = [metadata['composer'],]
+            metadata['xesam:composer'] = [mpd_meta['composer']]
 
-    mpd_tags = ('album', 'title')
-    for tag in mpd_tags:
-        if tag in metadata:
-            metadata['xesam:%s' % tag] = metadata[tag]
-
-    if 'file' in metadata:
-        file = metadata['file']
-        if len([ x for x in urlhandlers if file.startswith(x) ]) == 0:
-            file = os.path.join(params['music_dir'], file)
-        metadata['xesam:url'] = file
-        cover = find_cover(file, metadata)
+    if 'file' in mpd_meta:
+        song_url = mpd_meta['file']
+        if not any([song_url.startswith(prefix) for prefix in urlhandlers]):
+            song_url = os.path.join(params['music_dir'], song_url)
+        metadata['xesam:url'] = song_url
+        cover = find_cover(song_url, metadata)
         if cover:
             metadata['mpris:artUrl'] = cover
 
     # Stream: populate some missings tags with stream's name
-    if 'name' in metadata:
+    if 'name' in mpd_meta:
         if 'xesam:title' not in metadata:
-            metadata['xesam:title'] = metadata['name']
+            metadata['xesam:title'] = mpd_meta['name']
         elif 'xesam:album' not in metadata:
-            metadata['xesam:album'] = metadata['name']
-
-    surplus_tags = set(metadata.keys()).difference(set(allowed_tags.keys()))
-    # Remove surplus tags
-    for tag in surplus_tags:
-        del metadata[tag]
+            metadata['xesam:album'] = mpd_meta['name']
 
     # Cast metadata to the correct type, or discard it
     for key, value in metadata.items():
@@ -751,7 +750,7 @@ def format_metadata(metadata):
             metadata[key] = allowed_tags[key](value)
         except ValueError:
             del metadata[key]
-            logger.error("Can't cast value %s to %s" % \
+            logger.error("Can't cast value %r to %s" % \
                 (value, allowed_tags[key]))
 
     return dbus.Dictionary(metadata, signature='sv')
