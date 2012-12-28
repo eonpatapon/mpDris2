@@ -1162,8 +1162,6 @@ if __name__ == '__main__':
     gettext.bindtextdomain('mpDris2', '@datadir@/locale')
     gettext.textdomain('mpDris2')
 
-    music_dir = find_music_dir()
-
     config = configparser.SafeConfigParser()
     config.read(['/etc/mpDris2.conf'] +
                 list(reversed(each_xdg_config('mpDris2/mpDris2.conf'))))
@@ -1174,13 +1172,18 @@ if __name__ == '__main__':
         params['port'] = config.get('Connection', 'port')
     if config.has_option('Connection', 'password'):
         params['password'] = config.get('Connection', 'password')
-    if config.has_option('Connection', 'music_dir'):
-        music_dir = config.get('Connection', 'music_dir')
 
     if 'MPD_HOST' in os.environ:
         params['host'] = os.environ['MPD_HOST']
     if 'MPD_PORT' in os.environ:
         params['port'] = os.environ['MPD_PORT']
+
+    if config.has_option('Library', 'music_dir'):
+        music_dir = config.get('Library', 'music_dir')
+    elif config.has_option('Connection', 'music_dir'):
+        music_dir = config.get('Connection', 'music_dir')
+    else:
+        music_dir = find_music_dir()
 
     if config.has_option('Library', 'cover_regex'):
         params['cover_regex'] = re.compile(config.get('Library', 'cover_regex'), re.I | re.X)
