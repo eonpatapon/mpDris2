@@ -263,7 +263,7 @@ class MPDWrapper(mpd.MPDClient):
                 # Add our service to the session bus
                 self._dbus_service.add_to_connection(dbus.SessionBus(),
                     '/org/mpris/MediaPlayer2')
-                self._dbus_service.aquire_name()
+                self._dbus_service.acquire_name()
             # Init internal state to throw events at start
             self.init_state()
             # Add periodic status check for sending MPRIS events
@@ -420,9 +420,9 @@ class MPRISInterface(dbus.service.Object):
         dbus.service.Object.__init__(self, dbus.SessionBus(),
             MPRISInterface.__path)
         self.path = path
-        self.aquire_name()
+        self.acquire_name()
 
-    def aquire_name(self):
+    def acquire_name(self):
         self._bus_name = dbus.service.BusName(MPRISInterface.__name,
             bus=dbus.SessionBus())
 
