@@ -206,6 +206,7 @@ class MPDWrapper(mpd.MPDClient):
         self._dbus = dbus
         self._params = params
         self._monitor = False
+        self._can_single = False
         self._status = False
         self._position = 0
         self._dbus_service = False
@@ -234,14 +235,20 @@ class MPDWrapper(mpd.MPDClient):
     def my_connect(self):
         """ Init MPD connection """
         try:
-            # Connect to host
+            self._can_single = False
+
             self.connect(self._params['host'], self._params['port'])
             if params['password']:
                 self.password(self._params['password'])
+
             # Get URL handlers supported by MPD
-            global urlhandlers
-            if 'urlhandlers' in self.commands():
+            commands = self.commands()
+            if 'urlhandlers' in commands: # added in 0.11
+                global urlhandlers
                 urlhandlers = self.urlhandlers()
+            if 'single' in commands: # added in 0.15
+                self._can_single = True
+
             if self._errors > 0:
                 notification.rnotify(identity, _('Reconnected'))
                 logger.debug('Reconnected to MPD server.')
@@ -342,7 +349,8 @@ class MPDWrapper(mpd.MPDClient):
             if old_status['random'] != self._status['random']:
                 self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'Shuffle')
 
-            if old_status['repeat'] != self._status['repeat']:
+            if old_status['repeat'] != self._status['repeat'] \
+               or old_status.get('single', 0) != self._status.get('single', 0):
                 self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'LoopStatus')
 
         # Return True to continue polling
@@ -437,17 +445,31 @@ class MPRISInterface(dbus.service.Object):
         return {'play': 'Playing', 'pause': 'Paused', 'stop': 'Stopped'}[status['state']]
 
     def __set_loop_status(value):
-        if str(value) == "Playlist":
+        if value == "Playlist":
             mpd_wrapper.repeat(1)
-        elif str(value) == "None":
+            if mpd_wrapper._can_single:
+                mpd_wrapper.single(0)
+        elif value == "Track":
+            if mpd_wrapper._can_single:
+                mpd_wrapper.repeat(1)
+                mpd_wrapper.single(1)
+        elif value == "None":
             mpd_wrapper.repeat(0)
+            if mpd_wrapper._can_single:
+                mpd_wrapper.single(0)
         else:
-            raise dbus.exceptions.DBusException("Loop mode not supported")
+            raise dbus.exceptions.DBusException("Loop mode %r not supported" % value)
         return
 
     def __get_loop_status():
         status = mpd_wrapper.status()
-        return ("None", "Playlist")[int(status['repeat'])]
+        if int(status['repeat']) == 1:
+            if int(status.get('single', 0)) == 1:
+                return "Track"
+            else:
+                return "Playlist"
+        else:
+            return "None"
 
     def __set_shuffle(value):
         mpd_wrapper.random(value)
