@@ -31,6 +31,7 @@ from dbus.mainloop.glib import DBusGMainLoop
 import ConfigParser
 import logging
 import gettext
+import time
 
 gettext.bindtextdomain('mpDris2', '@datadir@/locale')
 gettext.textdomain('mpDris2')
@@ -205,12 +206,20 @@ class MPDWrapper(mpd.MPDClient):
         mpd.MPDClient.__init__(self)
         self._dbus = dbus
         self._params = params
-        self._monitor = False
+        self._dbus_service = False
+
         self._can_single = False
+        self._can_idle = False
+
+        self._errors = 0
+        self._poll_id = None
+        self._watch_id = None
+        self._idling = False
+
         self._status = False
         self._position = 0
-        self._dbus_service = False
-        self._errors = 0
+        self._time = 0
+
         # init mmkeys, if configured
         if self._params['mmkeys']:
             try:
@@ -220,40 +229,48 @@ class MPDWrapper(mpd.MPDClient):
                 gsd_object.GrabMediaPlayerKeys('mpDris2', 0,
                     dbus_interface='org.gnome.SettingsDaemon.MediaKeys')
                 # connect_to_signal registers our callback function.
-                gsd_object.connect_to_signal('MediaPlayerKeyPressed', self.on_mediakey)
+                gsd_object.connect_to_signal('MediaPlayerKeyPressed', self.mediakey_callback)
             except:
                 logger.error('Failed to connect to GNOME Settings Daemon.' \
                     ' Disabling multimedia key support')
                 params['mmkeys'] = False
 
     def run(self):
-        """ Try to connect to MPD """
+        """
+        Try to connect to MPD; retry every 5 seconds on failure.
+        """
         if self.my_connect():
-            # If connection fail retry in 5 seconds
-            gobject.timeout_add(5000, self.my_connect)
+            gobject.timeout_add_seconds(5, self.my_connect)
+            return False
+        else:
+            return True
 
     def my_connect(self):
         """ Init MPD connection """
         try:
+            self._idling = False
+            self._can_idle = False
             self._can_single = False
 
             self.connect(self._params['host'], self._params['port'])
             if params['password']:
                 self.password(self._params['password'])
 
-            # Get URL handlers supported by MPD
             commands = self.commands()
             if 'urlhandlers' in commands: # added in 0.11
                 global urlhandlers
                 urlhandlers = self.urlhandlers()
+            if 'idle' in commands: # added in 0.14
+                self._can_idle = True
             if 'single' in commands: # added in 0.15
                 self._can_single = True
 
             if self._errors > 0:
                 notification.rnotify(identity, _('Reconnected'))
-                logger.debug('Reconnected to MPD server.')
+                logger.info('Reconnected to MPD server.')
             else:
                 logger.debug('Connected to MPD server.')
+
             # Make the socket non blocking to detect deconnections
             self._sock.settimeout(5.0)
             # Export our DBUS service
@@ -261,15 +278,25 @@ class MPDWrapper(mpd.MPDClient):
                 self._dbus_service = MPRISInterface(self._params['music_dir'])
             else:
                 # Add our service to the session bus
-                self._dbus_service.add_to_connection(dbus.SessionBus(),
-                    '/org/mpris/MediaPlayer2')
+                #self._dbus_service.add_to_connection(dbus.SessionBus(),
+                #    '/org/mpris/MediaPlayer2')
                 self._dbus_service.acquire_name()
+
             # Init internal state to throw events at start
             self.init_state()
+
             # Add periodic status check for sending MPRIS events
-            self._monitor = gobject.timeout_add(1000, self.monitor)
+            if not self._poll_id:
+                interval = 15 if self._can_idle else 1
+                self._poll_id = gobject.timeout_add_seconds(interval, self.timer_callback)
+            if self._can_idle and not self._watch_id:
+                self._watch_id = gobject.io_add_watch(self,
+                                    gobject.IO_IN|gobject.IO_HUP, self.socket_callback)
             # Reset error counter
             self._errors = 0
+
+            self.timer_callback()
+            self.idle_enter()
             # Return False to stop trying to connect
             return False
         except socket.error as e:
@@ -286,14 +313,25 @@ class MPDWrapper(mpd.MPDClient):
     def reconnect(self):
         logger.warning("Disconnected")
         notification.rnotify(identity, _('Disconnected'), 'error')
-        # Release the Dbus name
-        self._dbus_service.release_name();
-        # Disconnect service from the session bus
-        self._dbus_service.remove_from_connection();
+
+        # Release the DBus name and disconnect from bus
+        self._dbus_service.release_name()
+        #self._dbus_service.remove_from_connection()
+
         # Stop monitoring
-        gobject.source_remove(self._monitor)
+        if self._poll_id:
+            gobject.source_remove(self._poll_id)
+            self._poll_id = None
+        if self._watch_id:
+            gobject.source_remove(self._watch_id)
+            self._watch_id = None
+
         # Clean mpd client state
-        self.disconnect()
+        try:
+            self.disconnect()
+        except:
+            self.disconnect()
+
         # Try to reconnect
         self.run()
 
@@ -305,58 +343,63 @@ class MPDWrapper(mpd.MPDClient):
         self._status['songid'] = '-1'
         self._position = 0
 
-    def monitor(self):
-        old_status = self._status
-        old_position = self._position
+    def idle_enter(self):
+        if not self._can_idle:
+            return False
+        if not self._idling:
+            # NOTE: do not use MPDClient.idle(), which waits for an event
+            self._write_command("idle", [])
+            self._idling = True
+            logger.debug("Entered idle")
+            return True
+        else:
+            logger.warning("Nested idle_enter()!")
+            return False
 
-        self._status = self.status()
+    def idle_leave(self):
+        if not self._can_idle:
+            return False
+        if self._idling:
+            # NOTE: don't use noidle() or _execute() to avoid infinite recursion
+            self._write_command("noidle", [])
+            self._fetch_object()
+            self._idling = False
+            logger.debug("Left idle")
+            return True
+        else:
+            return False
 
-        if type(self._status) == dict:
+    # Events
 
-            if 'time' in self._status:
-                self._position = int(self._status['time'].split(':')[0])
-            else:
-                self._position = 0
-
-            if self._status['state'] != 'stop':
-                if not 'songid' in old_status or old_status['songid'] != self._status['songid']:
-                    metadata = self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'Metadata')
-                    if self._params['notify']:
-                        uri = 'sound'
-                        if 'mpris:artUrl' in metadata:
-                            uri = metadata['mpris:artUrl']
-                        title = 'Unknown Title'
-                        if 'xesam:title' in metadata:
-                            title = metadata['xesam:title']
-                        artist = 'Unknown Artist'
-                        if 'xesam:artist' in metadata:
-                            artist = ", ".join(metadata['xesam:artist'])
-                        notification.notify(title, _('by %s') % artist, uri)
-
-                if (abs(self._position - old_position) > 2 and \
-                   old_status['songid'] == self._status['songid']) or \
-                   not 'songid' in old_status or \
-                   old_status['songid'] == '-1':
-                    self._dbus_service.Seeked(self._position * 1000000)
-
-
-            if old_status['volume'] != self._status['volume']:
-                self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'Volume')
-
-            if old_status['state'] != self._status['state']:
-                self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'PlaybackStatus')
-
-            if old_status['random'] != self._status['random']:
-                self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'Shuffle')
-
-            if old_status['repeat'] != self._status['repeat'] \
-               or old_status.get('single', 0) != self._status.get('single', 0):
-                self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'LoopStatus')
-
-        # Return True to continue polling
+    def timer_callback(self):
+        was_idle = self.idle_leave()
+        self._update_properties()
+        if was_idle:
+            self.idle_enter()
         return True
 
-    def on_mediakey(self, appname, key):
+    def socket_callback(self, fd, event):
+        logger.debug("Socket event %r on fd %r" % (event, fd))
+        if event & gobject.IO_HUP:
+            self.reconnect()
+            return True
+        elif event & gobject.IO_IN:
+            if self._idling:
+                self._idling = False
+                data = fd._fetch_objects("changed")
+                logger.debug("Idle events: %r" % data)
+                updated = False
+                for item in data:
+                    subsystem = item["changed"]
+                    # subsystem list: <http://www.musicpd.org/doc/protocol/ch03.html>
+                    if subsystem in ("player", "mixer", "options"):
+                        if not updated:
+                            self._update_properties()
+                            updated = True
+                self.idle_enter()
+        return True
+
+    def mediakey_callback(self, appname, key):
         """ GNOME media key handler """
         logger.debug('Got GNOME mmkey "%s" for "%s"' % (key, appname))
         if key == 'Play':
@@ -374,10 +417,85 @@ class MPDWrapper(mpd.MPDClient):
             notification.rnotify(identity, _('Stopped'))
             self.stop()
 
+    def last_status(self):
+        if time.time() - self._time >= 2:
+            self.timer_callback()
+        return self._status.copy()
+
+    def _update_properties(self):
+        old_status   = self._status
+        old_position = self._position
+        old_time     = self._time
+        self._status = new_status = self.status()
+        self._time   = new_time   = int(time.time())
+
+        if not new_status:
+            return
+
+        if 'elapsed' in new_status:
+            new_position = float(new_status['elapsed'])
+        elif 'time' in new_status:
+            new_position = int(new_status['time'].split(':')[0])
+        else:
+            new_position = 0
+
+        self._position = new_position
+
+        # "player" subsystem
+
+        if old_status['state'] != new_status['state']:
+            self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'PlaybackStatus')
+
+        if old_status['songid'] == new_status['songid']:
+            if new_status['state'] == 'play':
+                expected_position = old_position + (new_time - old_time)
+            else:
+                expected_position = old_position
+            if abs(new_position - expected_position) > 0.6:
+                logger.debug("Expected pos %r, actual %r, diff %r" % (
+                    expected_position, new_position, new_position-expected_position))
+                logger.debug("Old position was %r at %r (%r seconds ago)" % (
+                    old_position, old_time, new_time-old_time))
+                self._dbus_service.Seeked(new_position * 1000000)
+
+        else:
+            metadata = self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'Metadata')
+            if self._params['notify']:
+                uri = 'sound'
+                if 'mpris:artUrl' in metadata:
+                    uri = metadata['mpris:artUrl']
+                title = 'Unknown Title'
+                if 'xesam:title' in metadata:
+                    title = metadata['xesam:title']
+                artist = 'Unknown Artist'
+                if 'xesam:artist' in metadata:
+                    artist = ", ".join(metadata['xesam:artist'])
+                notification.notify(title, _('by %s') % artist, uri)
+
+        # "mixer" subsystem
+
+        if old_status['volume'] != new_status['volume']:
+            self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'Volume')
+
+        # "options" subsystem
+        # also triggered if consume, crossfade or ReplayGain are updated
+
+        if old_status['random'] != new_status['random']:
+            self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'Shuffle')
+
+        if old_status['repeat'] != new_status['repeat'] \
+           or old_status.get('single', 0) != new_status.get('single', 0):
+            self._dbus_service.update_property('org.mpris.MediaPlayer2.Player', 'LoopStatus')
+
     # Catch connection errors when calling mpd client methods
     def _execute(self, command, args):
         try:
-            return mpd.MPDClient._execute(self, command, args)
+            was_idle = self.idle_leave()
+            logger.debug("Sending command %r (during idle? %r)" % (command, was_idle))
+            r = mpd.MPDClient._execute(self, command, args)
+            if was_idle:
+                self.idle_enter()
+            return r
         except (socket.error, mpd.MPDError, socket.timeout):
             self.reconnect()
             return False
@@ -441,7 +559,7 @@ class MPRISInterface(dbus.service.Object):
     }
 
     def __get_playback_status():
-        status = mpd_wrapper.status()
+        status = mpd_wrapper.last_status()
         return {'play': 'Playing', 'pause': 'Paused', 'stop': 'Stopped'}[status['state']]
 
     def __set_loop_status(value):
@@ -462,7 +580,7 @@ class MPRISInterface(dbus.service.Object):
         return
 
     def __get_loop_status():
-        status = mpd_wrapper.status()
+        status = mpd_wrapper.last_status()
         if int(status['repeat']) == 1:
             if int(status.get('single', 0)) == 1:
                 return "Track"
@@ -476,7 +594,7 @@ class MPRISInterface(dbus.service.Object):
         return
 
     def __get_shuffle():
-        if mpd_wrapper.status()['random'] == '1':
+        if int(mpd_wrapper.last_status()['random']) == 1:
             return True
         else:
             return False
@@ -485,7 +603,7 @@ class MPRISInterface(dbus.service.Object):
         return format_metadata(mpd_wrapper.currentsong())
 
     def __get_volume():
-        vol = float(mpd_wrapper.status()['volume'])
+        vol = float(mpd_wrapper.last_status()['volume'])
         if vol > 0:
             return vol / 100.0
         else:
@@ -497,7 +615,7 @@ class MPRISInterface(dbus.service.Object):
         return
 
     def __get_position():
-        status = mpd_wrapper.status()
+        status = mpd_wrapper.last_status()
         if 'time' in status:
             current, end = status['time'].split(':')
             return dbus.Int64((int(current) * 1000000))
@@ -505,7 +623,7 @@ class MPRISInterface(dbus.service.Object):
             return dbus.Int64(0)
 
     def __can_next():
-        if 'nextsongid' in mpd_wrapper.status():
+        if 'nextsongid' in mpd_wrapper.last_status():
             return True
         else:
             return False
