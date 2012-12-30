@@ -27,14 +27,21 @@ import signal
 import socket
 import getopt
 import mpd
-import gobject
+try:
+    from gi.repository import GObject as gobject
+except ImportError:
+    import gobject
 import dbus
 import dbus.service
 from dbus.mainloop.glib import DBusGMainLoop
-import ConfigParser
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser
 import logging
 import gettext
 import time
+import collections
 
 gettext.bindtextdomain('mpDris2', '@datadir@/locale')
 gettext.textdomain('mpDris2')
@@ -65,7 +72,7 @@ notification = None
 # MPRIS allowed metadata tags
 allowed_tags = {
     'mpris:trackid': dbus.ObjectPath,
-    'mpris:length': long,
+    'mpris:length': int,
     'mpris:artUrl': str,
     'xesam:album': str,
     'xesam:albumArtist': list,
@@ -684,7 +691,7 @@ class MPRISInterface(dbus.service.Object):
                          in_signature="ss", out_signature="v")
     def Get(self, interface, prop):
         getter, setter = self.__prop_mapping[interface][prop]
-        if callable(getter):
+        if isinstance(getter, collections.Callable):
             return getter()
         return getter
 
@@ -700,15 +707,15 @@ class MPRISInterface(dbus.service.Object):
     def GetAll(self, interface):
         read_props = {}
         props = self.__prop_mapping[interface]
-        for key, (getter, setter) in props.iteritems():
-            if callable(getter):
+        for key, (getter, setter) in props.items():
+            if isinstance(getter, collections.Callable):
                 getter = getter()
             read_props[key] = getter
         return read_props
 
     def update_property(self, interface, prop):
         getter, setter = self.__prop_mapping[interface][prop]
-        if callable(getter):
+        if isinstance(getter, collections.Callable):
             value = getter()
         else:
             value = getter
@@ -909,7 +916,7 @@ def format_metadata(mpd_meta):
             metadata['xesam:album'] = mpd_meta['name']
 
     # Cast metadata to the correct type, or discard it
-    for key, value in metadata.items():
+    for key, value in list(metadata.items()):
         try:
             metadata[key] = allowed_tags[key](value)
         except ValueError:
@@ -976,7 +983,7 @@ def find_music_dir():
 
 
 def usage(params):
-    print """\
+    print("""\
 Usage: %(progname)s [OPTION]... [MPD_HOST] [MPD_PORT]
 
 Note: Environment variables MPD_HOST and MPD_PORT can be used instead of above
@@ -987,14 +994,14 @@ Note: Environment variables MPD_HOST and MPD_PORT can be used instead of above
 
 Default: MPD_HOST: %(host)s, MPD_PORT: %(port)s
 
-Report bugs to https://github.com/eonpatapon/mpDris2/issues""" % params
+Report bugs to https://github.com/eonpatapon/mpDris2/issues""" % params)
 
 if __name__ == '__main__':
     DBusGMainLoop(set_as_default=True)
 
     music_dir = find_music_dir()
 
-    config = ConfigParser.SafeConfigParser()
+    config = configparser.SafeConfigParser()
     config.read(['/etc/mpDris2.conf'] +
                 list(reversed(each_xdg_config('mpDris2/mpDris2.conf'))))
 
@@ -1018,9 +1025,10 @@ if __name__ == '__main__':
 
     try:
         (opts, args) = getopt.getopt(sys.argv[1:], 'hdp:', ['help', 'debug', 'path='])
-    except getopt.GetoptError, (msg, opt):
-        print sys.argv[0] + ': ' + msg
-        print
+    except getopt.GetoptError as exception:
+        (msg, opt) = exception.args
+        print(sys.argv[0] + ': ' + msg)
+        print()
         usage(params)
         sys.exit(2)
 
