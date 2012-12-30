@@ -427,6 +427,9 @@ class MPDWrapper(mpd.MPDClient):
             notification.rnotify(identity, _('Stopped'))
             self.stop()
 
+    def last_currentsong(self):
+        return self._currentsong.copy()
+
     def last_status(self):
         return self._status.copy()
 
@@ -434,6 +437,7 @@ class MPDWrapper(mpd.MPDClient):
         old_status = self._status
         old_position = self._position
         old_time = self._time
+        self._currentsong = self.currentsong()
         self._status = new_status = self.status()
         self._time = new_time = int(time.time())
 
@@ -615,7 +619,7 @@ class MPRISInterface(dbus.service.Object):
             return False
 
     def __get_metadata():
-        return format_metadata(mpd_wrapper.currentsong())
+        return format_metadata(mpd_wrapper.last_currentsong())
 
     def __get_volume():
         vol = float(mpd_wrapper.last_status()['volume'])
@@ -780,7 +784,7 @@ class MPRISInterface(dbus.service.Object):
 
     @dbus.service.method(__player_interface, in_signature='ox', out_signature='')
     def SetPosition(self, trackid, position):
-        song = mpd_wrapper.currentsong()
+        song = self.last_currentsong()
         # FIXME: use real dbus objects
         if str(trackid) != '/org/mpris/MediaPlayer2/Track/%s' % song['id']:
             return
