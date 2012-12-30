@@ -27,7 +27,7 @@ import signal
 import socket
 import getopt
 import mpd
-import gobject
+import glib
 import dbus
 import dbus.service
 from dbus.mainloop.glib import DBusGMainLoop
@@ -234,7 +234,7 @@ class MPDWrapper(mpd.MPDClient):
         Try to connect to MPD; retry every 5 seconds on failure.
         """
         if self.my_connect():
-            gobject.timeout_add_seconds(5, self.my_connect)
+            glib.timeout_add_seconds(5, self.my_connect)
             return False
         else:
             return True
@@ -285,11 +285,11 @@ class MPDWrapper(mpd.MPDClient):
             # Add periodic status check for sending MPRIS events
             if not self._poll_id:
                 interval = 15 if self._can_idle else 1
-                self._poll_id = gobject.timeout_add_seconds(interval,
+                self._poll_id = glib.timeout_add_seconds(interval,
                                                             self.timer_callback)
             if self._can_idle and not self._watch_id:
-                self._watch_id = gobject.io_add_watch(self,
-                                                      gobject.IO_IN | gobject.IO_HUP,
+                self._watch_id = glib.io_add_watch(self,
+                                                      glib.IO_IN | glib.IO_HUP,
                                                       self.socket_callback)
             # Reset error counter
             self._errors = 0
@@ -319,10 +319,10 @@ class MPDWrapper(mpd.MPDClient):
 
         # Stop monitoring
         if self._poll_id:
-            gobject.source_remove(self._poll_id)
+            glib.source_remove(self._poll_id)
             self._poll_id = None
         if self._watch_id:
-            gobject.source_remove(self._watch_id)
+            glib.source_remove(self._watch_id)
             self._watch_id = None
 
         # Clean mpd client state
@@ -383,10 +383,10 @@ class MPDWrapper(mpd.MPDClient):
 
     def socket_callback(self, fd, event):
         logger.debug("Socket event %r on fd %r" % (event, fd))
-        if event & gobject.IO_HUP:
+        if event & glib.IO_HUP:
             self.reconnect()
             return True
-        elif event & gobject.IO_IN:
+        elif event & glib.IO_IN:
             if self._idling:
                 self._idling = False
                 data = fd._fetch_objects("changed")
@@ -532,7 +532,7 @@ class MPDWrapper(mpd.MPDClient):
                 self.register_mediakeys()
                 return False
             # Timeout is necessary since g-s-d takes some time to load all plugins.
-            gobject.timeout_add(600, reregister)
+            glib.timeout_add(600, reregister)
 
     ## Compatibility functions
 
@@ -1157,7 +1157,7 @@ if __name__ == '__main__':
         logger.warning('By not supplying a path for the music library '
                        'this program will break the MPRIS specification!')
 
-    loop = gobject.MainLoop()
+    loop = glib.MainLoop()
     signal.signal(signal.SIGINT, handle_sigint)
 
     # Wrapper to send notifications
