@@ -294,9 +294,9 @@ class MPDWrapper(mpd.MPDClient):
             self.init_state()
 
             # Add periodic status check for sending MPRIS events
-            # when idle mode is not supported
-            if not self._poll_id and not self._can_idle:
-                self._poll_id = gobject.timeout_add_seconds(1,
+            if not self._poll_id:
+                interval = 15 if self._can_idle else 1
+                self._poll_id = gobject.timeout_add_seconds(interval,
                                                             self.timer_callback)
             if self._can_idle and not self._watch_id:
                 self._watch_id = gobject.io_add_watch(self,
@@ -305,7 +305,7 @@ class MPDWrapper(mpd.MPDClient):
             # Reset error counter
             self._errors = 0
 
-            self._update_properties()
+            self.timer_callback()
             self.idle_enter()
             # Return False to stop trying to connect
             return False
@@ -431,6 +431,8 @@ class MPDWrapper(mpd.MPDClient):
         return self._currentsong.copy()
 
     def last_status(self):
+        if time.time() - self._time >= 2:
+            self.timer_callback()
         return self._status.copy()
 
     def _update_properties(self):
