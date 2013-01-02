@@ -461,7 +461,7 @@ class MPDWrapper(mpd.MPDClient):
             self._dbus_service.update_property('org.mpris.MediaPlayer2.Player',
                                                'PlaybackStatus')
 
-        if old_status['songid'] == new_status['songid']:
+        if old_status.get('songid', None) == new_status.get('songid', None):
             if new_status['state'] == 'play':
                 expected_position = old_position + (new_time - old_time)
             else:
