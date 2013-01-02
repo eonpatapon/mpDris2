@@ -382,7 +382,11 @@ class MPDWrapper(mpd.MPDClient):
     # Events
 
     def timer_callback(self):
-        was_idle = self.idle_leave()
+        try:
+            was_idle = self.idle_leave()
+        except (socket.error, mpd.MPDError, socket.timeout):
+            self.reconnect()
+            return False
         self._update_properties()
         if was_idle:
             self.idle_enter()
