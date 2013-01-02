@@ -240,6 +240,13 @@ class MPDWrapper(mpd.MPDClient):
                              ' Disabling multimedia key support')
                 params['mmkeys'] = False
 
+    # Fedora 17 still has python-mpd 0.2, which lacks fileno().
+    if not hasattr(mpd.MPDClient, "fileno"):
+        def fileno(self):
+            if self._sock is None:
+                raise ConnectionError("Not connected")
+            return self._sock.fileno()
+
     def run(self):
         """
         Try to connect to MPD; retry every 5 seconds on failure.
