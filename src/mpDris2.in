@@ -529,17 +529,31 @@ class MPDWrapper(mpd.MPDClient):
             return self._getobjects(*args)
 
     # Catch connection errors when calling mpd client methods
-    def _execute(self, command, args):
-        try:
-            was_idle = self.idle_leave()
-            logger.debug("Sending command %r (during idle? %r)" % (command, was_idle))
-            r = mpd.MPDClient._execute(self, command, args)
-            if was_idle:
-                self.idle_enter()
-            return r
-        except (socket.error, mpd.MPDError, socket.timeout):
-            self.reconnect()
-            return False
+    if hasattr(mpd.MPDClient, "_execute"):
+        def _execute(self, command, args):
+            try:
+                was_idle = self.idle_leave()
+                logger.debug("Sending command %r (during idle? %r)" % (command, was_idle))
+                r = mpd.MPDClient._execute(self, command, args)
+                if was_idle:
+                    self.idle_enter()
+                return r
+            except (socket.error, mpd.MPDError, socket.timeout):
+                self.reconnect()
+                return False
+    elif hasattr(mpd.MPDClient, "_docommand"):
+        # Again for python-mpd 0.2
+        def _docommand(self, command, args, retval):
+            try:
+                was_idle = self.idle_leave()
+                logger.debug("Sending command %r (during idle? %r)" % (command, was_idle))
+                r = mpd.MPDClient._docommand(self, command, args, retval)
+                if was_idle:
+                    self.idle_enter()
+                return r
+            except (socket.error, mpd.MPDError, socket.timeout):
+                self.reconnect()
+                return False
 
 
 class Notify:
