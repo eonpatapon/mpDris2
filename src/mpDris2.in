@@ -822,7 +822,7 @@ class MPRISInterface(dbus.service.Object):
 
     @dbus.service.method(__player_interface, in_signature='ox', out_signature='')
     def SetPosition(self, trackid, position):
-        song = self.last_currentsong()
+        song = mpd_wrapper.last_currentsong()
         # FIXME: use real dbus objects
         if str(trackid) != '/org/mpris/MediaPlayer2/Track/%s' % song['id']:
             return
