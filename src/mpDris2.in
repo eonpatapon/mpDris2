@@ -598,14 +598,35 @@ class MPRISInterface(dbus.service.Object):
         dbus.service.Object.__init__(self, dbus.SessionBus(),
                                      MPRISInterface.__path)
         self.path = path
+
+        self._bus = dbus.SessionBus()
+        self._uname = self._bus.get_unique_name()
+        self._dbus_obj = self._bus.get_object("org.freedesktop.DBus",
+                                              "/org/freedesktop/DBus")
+        self._dbus_obj.connect_to_signal("NameOwnerChanged",
+                                         self._name_owner_changed_callback,
+                                         arg0=self.__name)
+
         self.acquire_name()
+
+    def _name_owner_changed_callback(self, name, old_owner, new_owner):
+        if name == self.__name and old_owner == self._uname and new_owner != "":
+            try:
+                pid = self._dbus_obj.GetConnectionUnixProcessID(new_owner)
+            except:
+                pid = None
+            logger.info("Replaced by %s (PID %s)" % (new_owner, pid or "unknown"))
+            loop.quit()
 
     def acquire_name(self):
         self._bus_name = dbus.service.BusName(MPRISInterface.__name,
-                                              bus=dbus.SessionBus())
+                                              bus=self._bus,
+                                              allow_replacement=True,
+                                              replace_existing=True)
 
     def release_name(self):
-        del self._bus_name
+        if hasattr(self, "_bus_name"):
+            del self._bus_name
 
     __root_interface = "org.mpris.MediaPlayer2"
     __root_props = {
