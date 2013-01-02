@@ -244,7 +244,7 @@ class MPDWrapper(mpd.MPDClient):
     if not hasattr(mpd.MPDClient, "fileno"):
         def fileno(self):
             if self._sock is None:
-                raise ConnectionError("Not connected")
+                raise mpd.ConnectionError("Not connected")
             return self._sock.fileno()
 
     def run(self):
