@@ -395,7 +395,7 @@ class MPDWrapper(mpd.MPDClient):
                 for item in data:
                     subsystem = item["changed"]
                     # subsystem list: <http://www.musicpd.org/doc/protocol/ch03.html>
-                    if subsystem in ("player", "mixer", "options"):
+                    if subsystem in ("player", "mixer", "options", "playlist"):
                         if not updated:
                             self._update_properties()
                             updated = True
@@ -498,6 +498,11 @@ class MPDWrapper(mpd.MPDClient):
                 or old_status.get('single', 0) != new_status.get('single', 0)):
             self._dbus_service.update_property('org.mpris.MediaPlayer2.Player',
                                                'LoopStatus')
+
+        if (("nextsongid" in old_status and not "nextsongid" in new_status) or
+           ("nextsongid" in new_status and not "nextsongid" in old_status)):
+            self._dbus_service.update_property('org.mpris.MediaPlayer2.Player',
+                                               'CanGoNext')
 
     ## Media keys
 
