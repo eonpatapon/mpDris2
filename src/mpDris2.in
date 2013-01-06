@@ -499,8 +499,7 @@ class MPDWrapper(mpd.MPDClient):
             self._dbus_service.update_property('org.mpris.MediaPlayer2.Player',
                                                'LoopStatus')
 
-        if (("nextsongid" in old_status and not "nextsongid" in new_status) or
-           ("nextsongid" in new_status and not "nextsongid" in old_status)):
+        if ("nextsongid" in old_status) != ("nextsongid" in new_status):
             self._dbus_service.update_property('org.mpris.MediaPlayer2.Player',
                                                'CanGoNext')
 
