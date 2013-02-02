@@ -1,0 +1,256 @@
+2013-02-02  Jean-Philippe Braun  <eon@patapon.info>
+
+	Bump for 0.4 release
+
+2013-01-13  Jean-Philippe Braun  <eon@patapon.info>
+
+	Change mpDris2 tarballs location
+
+2013-01-06  Jean-Philippe Braun  <eon@patapon.info>
+
+	Update CanGoNext property when needed
+
+2013-01-06  Mantas Mikulėnas  <grawity@gmail.com>
+
+	Re-register media keys when gnome-settings-daemon is restarted
+
+2013-01-02  Jean-Philippe Braun  <eon@patapon.info>
+
+	Handle deconnection in idle mode (#35)
+
+2013-01-02  Mantas Mikulėnas  <grawity@gmail.com>
+
+	Add .mailmap for `git shortlog`
+	python-mpd 0.2.1 support (#36)
+	Automatically exit when another instance is launched
+
+2012-12-30  Jean-Philippe Braun  <eon@patapon.info>
+
+	Follow PEP8 for coding style
+
+2012-12-29  Mantas Mikulėnas  <grawity@gmail.com>
+
+	Cache mpd status for 2 seconds, when many properties are being queried
+	Use idle mode instead of polling
+	Support LoopStatus=Track
+	Accept non-file:// URLs for music library path
+
+2012-12-28  Mantas Mikulėnas  <grawity@gmail.com>
+
+	Clean up format_metadata()
+	Support multiple artists
+
+2012-12-28  Mantas Mikulėnas  <grawity@gmail.com>
+
+	Minor changes
+
+2012-12-28  Mantas Mikulėnas  <grawity@gmail.com>
+
+	Change README to a symlink, to avoid duplicate files
+
+2012-11-30  Mantas Mikulėnas  <grawity@gmail.com>
+
+	Include all artists in notifications
+	Allow multiple artists in metadata
+
+2012-11-24  Jean-Philippe Braun  <eon@patapon.info>
+
+	Smarter cover detection
+
+2012-10-28  Jean-Philippe Braun  <eon@patapon.info>
+
+	Add error message when music_dir does not exists
+
+2012-10-26  Simon McVittie  <smcv@debian.org>
+
+	Do not distribute mpDris2 in tarballs
+	Follow the XDG Base Directory spec, don't just assume ~/.config
+	Regenerate edited files if the source file changes
+
+2012-10-14  Jean-Philippe Braun  <eon@patapon.info>
+
+	Bump for 0.3 release
+	Update documentation
+	Use a signed int value if trackNumber is long (#21)
+
+2012-08-14  Jean-Philippe Braun  <eon@patapon.info>
+
+	Update metadata when replacing the queue
+
+2012-07-06  Mantas Mikulėnas  <grawity@nullroute.eu.org>
+
+	Export static Rate properties
+	Use correct type for mpris:trackid
+	Use correct type for Volume
+
+2012-06-28  Jean-Philippe Braun  <eon@patapon.info>
+
+	Updated documentation
+
+2012-06-25  Jean-Philippe Braun  <eon@patapon.info>
+
+	Handle tracks where track and disc metadata are lists
+	Correclty set urlhandlers
+
+2012-06-23  Jean-Philippe Braun  <eon@patapon.info>
+
+	Bump for 0.2 release
+
+2012-02-17  Jean-Philippe Braun  <eon@patapon.info>
+
+	Check that music_dir path is not None
+
+2012-02-15  Jean-Philippe Braun  <eon@patapon.info>
+
+	Check music_dir existence
+
+2012-02-07  Jean-Philippe Braun  <eon@patapon.info>
+
+	Correctly check the status metadata
+
+2012-02-06  Jean-Philippe Braun  <eon@patapon.info>
+
+	Add options in mpDris2.conf
+	Catch connection errors for all MPD client methods
+
+2012-02-05  Jean-Philippe Braun  <eon@patapon.info>
+
+	Remove trailing spaces
+	Update git ignore file
+	Add music_dir option in the config file
+	Add gettext support
+
+2012-01-30  Jean-Philippe Braun  <eon@patapon.info>
+
+	Handle cover.png album art
+
+2012-01-20  Mantas Mikulėnas  <grawity@nullroute.eu.org>
+
+	build: honor $NOCONFIGURE, correctly forward arguments otherwise
+
+2012-01-15  Jean-Philippe Braun  <eon@patapon.info>
+
+	Add a command line option to run in debug mode
+
+2012-01-11  Jean-Philippe Braun  <eon@patapon.info>
+
+	Ensure title and artist exists
+
+2012-01-10  Jean-Philippe Braun  <eon@patapon.info>
+
+	Return correct dbus type for the Position property
+
+2011-12-23  Jean-Philippe Braun  <eon@patapon.info>
+
+	Show the (re)connected notification only after a disconnection (closes #12)
+	Be sure to have a songid (ie: playing or paused state) for sending the Seeked signal
+	Honor notify = False setting
+
+2011-12-23  Mantas Mikulėnas  <grawity@nullroute.eu.org>
+
+	Fix password@host parsing mixup.
+
+2011-12-19  Jean-Philippe Braun  <eon@patapon.info>
+
+	Fix configuration path
+	Don't log connection errors indefinitely if network is down
+	Let MPDWrapper handle multimedia keys
+
+2011-12-18  Jean-Philippe Braun  <eon@patapon.info>
+
+	Release/Aquire name on bus on deconnection/connection
+	Handle network connections/deconnections gracefully
+	Minor change to README
+	Use MPDWrapper instead of MPDClient directly in a OO way
+
+2011-12-17  Jean-Philippe Braun  <eon@patapon.info>
+
+	Add README
+	Run automatically configure
+	Add missing files for automake
+	Add mpDris to autostart dir on installation
+	Automake packaging
+	Offset is in microseconds
+	Use python logger for messages
+	Remove unused variables and import
+	Send the Seeked signal if the position is changed from another client
+	Fix usage display
+
+2011-12-16  Mantas Mikulėnas  <grawity@nullroute.eu.org>
+
+	remove obsolete MPRISv1 constants
+	whitespace consistency, updated error messages
+
+2011-12-16  Jean-Philippe Braun  <eon@patapon.info>
+
+	Fix crash when playing long songs (closes #5)
+
+2011-12-16  Mantas Mikulėnas  <grawity@nullroute.eu.org>
+
+	Return correct playback position
+
+2011-12-14  Jean-Philippe Braun  <eon@patapon.info>
+
+	Correctly set the position of the current song in microseconds
+	Send also the Seeked signal
+
+2011-12-04  Mantas Mikulėnas  <grawity@nullroute.eu.org>
+
+	notify: adjust notification body
+	notify: fix display of coverart
+	config: remove configuration note from source
+	config: update example
+
+2011-12-03  Mantas Mikulėnas  <grawity@nullroute.eu.org>
+
+	config: correctly parse boolean params
+
+2011-12-02  Jean-Philippe Braun  <eon@patapon.info>
+
+	Add mpris2.conf example
+	Don't fail if pynotify is not installed
+
+2011-12-01  Hakan Erduman  <hakan@erduman.de>
+
+	Notification with libnotify
+	Subscribe to gnome multimedia keys
+
+2011-11-07  Jean-Philippe Braun  <jpbraun@mandriva.com>
+
+	Do not search covers for non local files (closes #6)
+
+2011-10-31  Mantas Mikulėnas  <grawity@nullroute.eu.org>
+
+	Display correct path on startup
+
+2011-10-28  Mantas Mikulėnas  <grawity@nullroute.eu.org>
+
+	Try to automatically find music directory
+	Fix 'Identity' to match actual name
+
+2011-10-28  Mantas Mikulėnas  <grawity@nullroute.eu.org>
+
+	Add a DesktopEntry for Ubuntu Sound Menu
+
+2011-08-20  Jean-Philippe Braun  <jpbraun@mandriva.com>
+
+	Return time = 0 when mpd is stopped
+
+2011-08-14  Jean-Philippe Braun  <jpbraun@mandriva.com>
+
+	Length should be in micro seconds
+
+2011-08-13  Jean-Philippe Braun  <jpbraun@mandriva.com>
+
+	Add some basic local cover support
+
+2011-07-07  Jean-Philippe Braun  <jpbraun@mandriva.com>
+
+	Check track number match
+
+2011-06-10  Jean-Philippe Braun  <jpbraun@mandriva.com>
+
+	Check if time length is available
+	Use of global music_dir param fix configuration file path
+	Update copyright info
+	Initial import
