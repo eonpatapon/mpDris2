@@ -33,12 +33,16 @@ import glib
 import dbus
 import dbus.service
 from dbus.mainloop.glib import DBusGMainLoop
-import ConfigParser
 import logging
 import gettext
 import time
 import mutagen
 import tempfile
+
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser
 
 gettext.bindtextdomain('mpDris2', '@datadir@/locale')
 gettext.textdomain('mpDris2')
@@ -1110,7 +1114,7 @@ if __name__ == '__main__':
 
     music_dir = find_music_dir()
 
-    config = ConfigParser.SafeConfigParser()
+    config = configparser.SafeConfigParser()
     config.read(['/etc/mpDris2.conf'] +
                 list(reversed(each_xdg_config('mpDris2/mpDris2.conf'))))
 
