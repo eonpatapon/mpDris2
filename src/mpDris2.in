@@ -69,7 +69,7 @@ notification = None
 # MPRIS allowed metadata tags
 allowed_tags = {
     'mpris:trackid': dbus.ObjectPath,
-    'mpris:length': long,
+    'mpris:length': int,
     'mpris:artUrl': str,
     'xesam:album': str,
     'xesam:albumArtist': list,
