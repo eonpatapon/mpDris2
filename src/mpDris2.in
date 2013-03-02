@@ -19,6 +19,8 @@
 # Based on mpDris from: Erik Karlsson <pilo@ayeon.org>
 # Some bits taken from quodlibet mpris plugin by <christoph.reiter@gmx.at>
 
+from __future__ import print_function
+
 import os
 import sys
 import re
@@ -924,7 +926,7 @@ class MPRISInterface(dbus.service.Object):
     def GetAll(self, interface):
         read_props = {}
         props = self.__prop_mapping[interface]
-        for key, (getter, setter) in props.iteritems():
+        for key, (getter, setter) in props.items():
             if callable(getter):
                 getter = getter()
             read_props[key] = getter
@@ -1090,7 +1092,7 @@ def find_music_dir():
 
 
 def usage(params):
-    print """\
+    print("""\
 Usage: %(progname)s [OPTION]... [MPD_HOST] [MPD_PORT]
 
 Note: Environment variables MPD_HOST and MPD_PORT can be used instead of above
@@ -1101,7 +1103,7 @@ Note: Environment variables MPD_HOST and MPD_PORT can be used instead of above
 
 Default: MPD_HOST: %(host)s, MPD_PORT: %(port)s
 
-Report bugs to https://github.com/eonpatapon/mpDris2/issues""" % params
+Report bugs to https://github.com/eonpatapon/mpDris2/issues""" % params)
 
 if __name__ == '__main__':
     DBusGMainLoop(set_as_default=True)
@@ -1132,9 +1134,10 @@ if __name__ == '__main__':
 
     try:
         (opts, args) = getopt.getopt(sys.argv[1:], 'hdp:', ['help', 'debug', 'path='])
-    except getopt.GetoptError, (msg, opt):
-        print sys.argv[0] + ': ' + msg
-        print
+    except getopt.GetoptError as ex:
+        (msg, opt) = ex.args
+        print("%s: %s" % (sys.argv[0], msg))
+        print()
         usage(params)
         sys.exit(2)
 
