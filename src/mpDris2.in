@@ -678,7 +678,10 @@ class MPDWrapper(object):
     ## Compatibility functions
 
     # Fedora 17 still has python-mpd 0.2, which lacks fileno().
-    if not hasattr(mpd.MPDClient, "fileno"):
+    if hasattr(mpd.MPDClient, "fileno"):
+        def fileno(self):
+            return self.client.fileno()
+    else:
         def fileno(self):
             if self.client._sock is None:
                 raise mpd.ConnectionError("Not connected")
