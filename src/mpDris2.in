@@ -29,7 +29,6 @@ import signal
 import socket
 import getopt
 import mpd
-import glib
 import dbus
 import dbus.service
 from dbus.mainloop.glib import DBusGMainLoop
@@ -47,6 +46,14 @@ try:
     import configparser
 except ImportError:
     import ConfigParser as configparser
+
+using_gi = False
+
+try:
+    from gi.repository import GLib as glib
+    using_gi = True
+except ImportError:
+    import glib
 
 gettext.bindtextdomain('mpDris2', '@datadir@/locale')
 gettext.textdomain('mpDris2')
@@ -308,9 +315,15 @@ class MPDWrapper(object):
                 self._poll_id = glib.timeout_add_seconds(interval,
                                                          self.timer_callback)
             if self._can_idle and not self._watch_id:
-                self._watch_id = glib.io_add_watch(self,
-                                                   glib.IO_IN | glib.IO_HUP,
-                                                   self.socket_callback)
+                if using_gi:
+                    self._watch_id = glib.io_add_watch(self,
+                                                       glib.PRIORITY_DEFAULT,
+                                                       glib.IO_IN | glib.IO_HUP,
+                                                       self.socket_callback)
+                else:
+                    self._watch_id = glib.io_add_watch(self,
+                                                       glib.IO_IN | glib.IO_HUP,
+                                                       self.socket_callback)
             # Reset error counter
             self._errors = 0
 
