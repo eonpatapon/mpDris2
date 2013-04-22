@@ -8,3 +8,4 @@ Type=Application
 Categories=Audio;Music;Player;
 NoDisplay=true
 X-DBUS-ServiceName=org.mpris.MediaPlayer2.mpd
+X-GNOME-UsesNotifications=true
