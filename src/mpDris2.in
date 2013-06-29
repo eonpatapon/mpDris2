@@ -286,11 +286,11 @@ class MPDWrapper(mpd.MPDClient):
             if not self._poll_id:
                 interval = 15 if self._can_idle else 1
                 self._poll_id = glib.timeout_add_seconds(interval,
-                                                            self.timer_callback)
+                                                         self.timer_callback)
             if self._can_idle and not self._watch_id:
                 self._watch_id = glib.io_add_watch(self,
-                                                      glib.IO_IN | glib.IO_HUP,
-                                                      self.socket_callback)
+                                                   glib.IO_IN | glib.IO_HUP,
+                                                   self.socket_callback)
             # Reset error counter
             self._errors = 0
 
@@ -543,18 +543,18 @@ class MPDWrapper(mpd.MPDClient):
                 raise mpd.ConnectionError("Not connected")
             return self._sock.fileno()
 
-    if not hasattr(mpd.MPDClient, "_write_command") \
-       and hasattr(mpd.MPDClient, "_writecommand"):
+    if (not hasattr(mpd.MPDClient, "_write_command")
+            and hasattr(mpd.MPDClient, "_writecommand")):
         def _write_command(self, *args):
             return self._writecommand(*args)
 
-    if not hasattr(mpd.MPDClient, "_fetch_object") \
-       and hasattr(mpd.MPDClient, "_getobject"):
+    if (not hasattr(mpd.MPDClient, "_fetch_object")
+            and hasattr(mpd.MPDClient, "_getobject")):
         def _fetch_object(self, *args):
             return self._getobject(*args)
 
-    if not hasattr(mpd.MPDClient, "_fetch_objects") \
-       and hasattr(mpd.MPDClient, "_getobjects"):
+    if (not hasattr(mpd.MPDClient, "_fetch_objects")
+            and hasattr(mpd.MPDClient, "_getobjects")):
         def _fetch_objects(self, *args):
             return self._getobjects(*args)
 
