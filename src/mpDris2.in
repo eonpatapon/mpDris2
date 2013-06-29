@@ -35,6 +35,8 @@ import ConfigParser
 import logging
 import gettext
 import time
+import mutagen
+import tempfile
 
 gettext.bindtextdomain('mpDris2', '@datadir@/locale')
 gettext.textdomain('mpDris2')
@@ -200,6 +202,7 @@ urlhandlers = ['http://']
 downloaded_covers = ['~/.covers/%s-%s.jpg']
 covers_names = ('cover', 'front', 'album', 'folder', '.folder', 'Album',)
 covers_exts = ('jpg', 'png', 'jpeg', 'gif',)
+temp_cover = tempfile.NamedTemporaryFile(suffix='.jpg')
 
 
 class MPDWrapper(mpd.MPDClient):
@@ -904,8 +907,16 @@ def handle_sigint(signum, frame):
 
 def find_cover(song_url, metadata):
     if song_url.startswith('file://'):
+        song_path = song_url[7:]
+        song_dir = os.path.dirname(song_path)
+
+        # Search for embedded cover art
+        song = mutagen.File(song_path)
+        if 'APIC:' in song.tags:
+            temp_cover.write(song.tags['APIC:'].data)
+            return 'file://' + temp_cover.name
+
         # Look in song directory for common album cover files
-        song_dir = os.path.dirname(song_url[7:])
         if os.path.exists(song_dir):
             for f in os.listdir(song_dir):
                 if f.startswith(covers_names) and f.endswith(covers_exts):
@@ -1175,6 +1186,7 @@ if __name__ == '__main__':
     try:
         mpd_wrapper.close()
         mpd_wrapper.disconnect()
+        temp_cover.close()
         logger.debug('Exiting')
     except mpd.ConnectionError:
         logger.error('Failed to disconnect properly')
