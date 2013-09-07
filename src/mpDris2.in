@@ -531,11 +531,12 @@ class MPDWrapper(mpd.MPDClient):
                 self._temp_cover.close()
 
             # Search for embedded cover art
-            song = mutagen.File(song_path)
-            if 'APIC:' in song.tags:
-                self._temp_cover = tempfile.NamedTemporaryFile(suffix='.jpg')
-                self._temp_cover.write(song.tags['APIC:'].data)
-                return 'file://' + self._temp_cover.name
+            if os.path.exists(song_path):
+                song = mutagen.File(song_path)
+                if 'APIC:' in song.tags:
+                    self._temp_cover = tempfile.NamedTemporaryFile(suffix='.jpg')
+                    self._temp_cover.write(song.tags['APIC:'].data)
+                    return 'file://' + self._temp_cover.name
 
             # Look in song directory for common album cover files
             if os.path.exists(song_dir):
