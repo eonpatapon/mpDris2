@@ -36,8 +36,12 @@ from dbus.mainloop.glib import DBusGMainLoop
 import logging
 import gettext
 import time
-import mutagen
 import tempfile
+
+try:
+    import mutagen
+except ImportError:
+    mutagen = None
 
 try:
     import configparser
@@ -540,7 +544,7 @@ class MPDWrapper(object):
                 self._temp_cover.close()
 
             # Search for embedded cover art
-            if os.path.exists(song_path):
+            if mutagen and os.path.exists(song_path):
                 song = mutagen.File(song_path)
                 if 'APIC:' in song.tags:
                     self._temp_cover = tempfile.NamedTemporaryFile(suffix='.jpg')
@@ -1193,6 +1197,11 @@ if __name__ == '__main__':
     else:
         logger.warning('By not supplying a path for the music library '
                        'this program will break the MPRIS specification!')
+
+    if mutagen:
+        logger.info('Using Mutagen to read covers from music files.')
+    else:
+        logger.info('Mutagen not available, covers in music files will be ignored.')
 
     loop = glib.MainLoop()
     signal.signal(signal.SIGINT, handle_sigint)
