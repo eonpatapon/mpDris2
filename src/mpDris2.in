@@ -19,6 +19,8 @@
 # Based on mpDris from: Erik Karlsson <pilo@ayeon.org>
 # Some bits taken from quodlibet mpris plugin by <christoph.reiter@gmx.at>
 
+from __future__ import print_function
+
 import os
 import sys
 import re
@@ -31,12 +33,16 @@ import glib
 import dbus
 import dbus.service
 from dbus.mainloop.glib import DBusGMainLoop
-import ConfigParser
 import logging
 import gettext
 import time
 import mutagen
 import tempfile
+
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser
 
 gettext.bindtextdomain('mpDris2', '@datadir@/locale')
 gettext.textdomain('mpDris2')
@@ -67,7 +73,7 @@ notification = None
 # MPRIS allowed metadata tags
 allowed_tags = {
     'mpris:trackid': dbus.ObjectPath,
-    'mpris:length': long,
+    'mpris:length': int,
     'mpris:artUrl': str,
     'xesam:album': str,
     'xesam:albumArtist': list,
@@ -204,13 +210,14 @@ covers_names = ('cover', 'front', 'album', 'folder', '.folder', 'Album',)
 covers_exts = ('jpg', 'png', 'jpeg', 'gif',)
 
 
-class MPDWrapper(mpd.MPDClient):
+class MPDWrapper(object):
     """ Wrapper of mpd.MPDClient to handle socket
         errors and similar
     """
 
     def __init__(self, params):
-        mpd.MPDClient.__init__(self)
+        self.client = mpd.MPDClient()
+
         self._dbus = dbus
         self._params = params
         self._dbus_service = False
@@ -250,7 +257,7 @@ class MPDWrapper(mpd.MPDClient):
             self._can_idle = False
             self._can_single = False
 
-            self.connect(self._params['host'], self._params['port'])
+            self.client.connect(self._params['host'], self._params['port'])
             if params['password']:
                 self.password(self._params['password'])
 
@@ -273,7 +280,7 @@ class MPDWrapper(mpd.MPDClient):
                 logger.debug('Connected to MPD server.')
 
             # Make the socket non blocking to detect deconnections
-            self._sock.settimeout(5.0)
+            self.client._sock.settimeout(5.0)
             # Export our DBUS service
             if not self._dbus_service:
                 self._dbus_service = MPRISInterface(self._params['music_dir'])
@@ -341,7 +348,9 @@ class MPDWrapper(mpd.MPDClient):
     def disconnect(self):
         if self._temp_cover:
             self._temp_cover.close()
-        mpd.MPDClient.disconnect(self)
+            self._temp_cover = None
+
+        self.client.disconnect()
 
     def init_state(self):
         # Get current state
@@ -670,54 +679,57 @@ class MPDWrapper(mpd.MPDClient):
     ## Compatibility functions
 
     # Fedora 17 still has python-mpd 0.2, which lacks fileno().
-    if not hasattr(mpd.MPDClient, "fileno"):
+    if hasattr(mpd.MPDClient, "fileno"):
         def fileno(self):
-            if self._sock is None:
+            return self.client.fileno()
+    else:
+        def fileno(self):
+            if self.client._sock is None:
                 raise mpd.ConnectionError("Not connected")
-            return self._sock.fileno()
+            return self.client._sock.fileno()
 
-    if (not hasattr(mpd.MPDClient, "_write_command")
-            and hasattr(mpd.MPDClient, "_writecommand")):
+    if hasattr(mpd.MPDClient, "_write_command"):
         def _write_command(self, *args):
-            return self._writecommand(*args)
+            return self.client._write_command(*args)
+    elif hasattr(mpd.MPDClient, "_writecommand"):
+        def _write_command(self, *args):
+            return self.client._writecommand(*args)
 
-    if (not hasattr(mpd.MPDClient, "_fetch_object")
-            and hasattr(mpd.MPDClient, "_getobject")):
+    if hasattr(mpd.MPDClient, "_fetch_object"):
         def _fetch_object(self, *args):
-            return self._getobject(*args)
+            return self.client._fetch_object(*args)
+    elif hasattr(mpd.MPDClient, "_getobject"):
+        def _fetch_object(self, *args):
+            return self.client._writecommand(*args)
 
-    if (not hasattr(mpd.MPDClient, "_fetch_objects")
-            and hasattr(mpd.MPDClient, "_getobjects")):
+    if hasattr(mpd.MPDClient, "_fetch_objects"):
         def _fetch_objects(self, *args):
-            return self._getobjects(*args)
+            return self.client._fetch_objects(*args)
+    elif hasattr(mpd.MPDClient, "_getobjects"):
+        def _fetch_objects(self, *args):
+            return self.client._getobjects(*args)
+
+    def __getattr__(self, attr):
+        if attr[0] == "_":
+            raise AttributeError(attr)
+        def fn(*a, **kw):
+            return self.call(attr, *a, **kw)
+        return fn
 
     # Catch connection errors when calling mpd client methods
-    if hasattr(mpd.MPDClient, "_execute"):
-        def _execute(self, command, args):
-            try:
-                was_idle = self.idle_leave()
-                logger.debug("Sending command %r (during idle? %r)" % (command, was_idle))
-                r = mpd.MPDClient._execute(self, command, args)
-                if was_idle:
-                    self.idle_enter()
-                return r
-            except (socket.error, mpd.MPDError, socket.timeout):
-                self.reconnect()
-                return False
-    elif hasattr(mpd.MPDClient, "_docommand"):
-        # Again for python-mpd 0.2
-        def _docommand(self, command, args, retval):
-            try:
-                was_idle = self.idle_leave()
-                logger.debug("Sending command %r (during idle? %r)" % (command, was_idle))
-                r = mpd.MPDClient._docommand(self, command, args, retval)
-                if was_idle:
-                    self.idle_enter()
-                return r
-            except (socket.error, mpd.MPDError, socket.timeout):
-                self.reconnect()
-                return False
-
+    def call(self, command, *args):
+        fn = getattr(self.client, command)
+        try:
+            was_idle = self.idle_leave()
+            logger.debug("Sending command %r (was idle? %r)" % (command, was_idle))
+            r = fn(*args)
+            if was_idle:
+                self.idle_enter()
+            return r
+        except (socket.error, mpd.MPDError, socket.timeout) as ex:
+            logger.debug("Trying to reconnect, got %r" % ex)
+            self.reconnect()
+            return False
 
 class Notify:
     def __init__(self, params):
@@ -925,7 +937,7 @@ class MPRISInterface(dbus.service.Object):
     def GetAll(self, interface):
         read_props = {}
         props = self.__prop_mapping[interface]
-        for key, (getter, setter) in props.iteritems():
+        for key, (getter, setter) in props.items():
             if callable(getter):
                 getter = getter()
             read_props[key] = getter
@@ -1091,7 +1103,7 @@ def find_music_dir():
 
 
 def usage(params):
-    print """\
+    print("""\
 Usage: %(progname)s [OPTION]... [MPD_HOST] [MPD_PORT]
 
 Note: Environment variables MPD_HOST and MPD_PORT can be used instead of above
@@ -1102,14 +1114,14 @@ Note: Environment variables MPD_HOST and MPD_PORT can be used instead of above
 
 Default: MPD_HOST: %(host)s, MPD_PORT: %(port)s
 
-Report bugs to https://github.com/eonpatapon/mpDris2/issues""" % params
+Report bugs to https://github.com/eonpatapon/mpDris2/issues""" % params)
 
 if __name__ == '__main__':
     DBusGMainLoop(set_as_default=True)
 
     music_dir = find_music_dir()
 
-    config = ConfigParser.SafeConfigParser()
+    config = configparser.SafeConfigParser()
     config.read(['/etc/mpDris2.conf'] +
                 list(reversed(each_xdg_config('mpDris2/mpDris2.conf'))))
 
@@ -1133,9 +1145,10 @@ if __name__ == '__main__':
 
     try:
         (opts, args) = getopt.getopt(sys.argv[1:], 'hdp:', ['help', 'debug', 'path='])
-    except getopt.GetoptError, (msg, opt):
-        print sys.argv[0] + ': ' + msg
-        print
+    except getopt.GetoptError as ex:
+        (msg, opt) = ex.args
+        print("%s: %s" % (sys.argv[0], msg))
+        print()
         usage(params)
         sys.exit(2)
 
@@ -1196,8 +1209,8 @@ if __name__ == '__main__':
 
     # Clean up
     try:
-        mpd_wrapper.close()
-        mpd_wrapper.disconnect()
+        mpd_wrapper.client.close()
+        mpd_wrapper.client.disconnect()
         logger.debug('Exiting')
     except mpd.ConnectionError:
         logger.error('Failed to disconnect properly')
