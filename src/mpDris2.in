@@ -758,6 +758,7 @@ class Notify:
         if self._notification:
             self._notification = pynotify.Notification(title, body, uri)
             self._notification.set_hint('desktop-entry', 'mpdris2')
+            self._notification.set_hint('transient', True)
             self._notification.show()
 
     def rnotify(self, title, body, uri=''):
