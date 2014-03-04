@@ -234,7 +234,12 @@ class MPDWrapper(object):
         self._watch_id = None
         self._idling = False
 
-        self._status = False
+        self._status = {
+            'state': None,
+            'volume': None,
+            'random': None,
+            'repeat': None,
+        }
         self._metadata = {}
         self._temp_cover = None
         self._position = 0
