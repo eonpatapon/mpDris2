@@ -1,3 +1,49 @@
+2014-03-09  Mantas Mikulėnas  <grawity@gmail.com>
+
+	Bump for 0.5 release
+	Modernize configure.ac
+	Fix exception on initial property update
+
+2014-01-11  Jörg Thalheim  <joerg@higgsboson.tk>
+
+	mpDris.in: Fix overlow in title length
+
+2013-10-14  Mantas Mikulėnas  <grawity@gmail.com>
+
+	Make Mutagen optional
+	Port fileno() to use self.client correctly
+	Make mpd command wrapper work with python3-mpd2
+	Try configparser before ConfigParser
+	Python 3 only has 'int'
+	Use modern syntax that works in both Python versions
+
+2013-09-07  Jean-Philippe Braun  <eon@patapon.info>
+
+	Check path exists before opening the file
+
+2013-05-17  Jean-Philippe Braun  <eon@patapon.info>
+
+	Store current song metadata in MPDWrapper
+	Create a new temp cover file for each track
+	Support embedded cover art (#48)
+
+2013-05-29  Jean-Philippe Braun  <eon@patapon.info>
+
+	PEP8 love
+
+2013-05-21  Ankur Sinha  <sanjay.ankur@gmail.com>
+
+	Add another entry to categories
+
+2013-04-22  Simon McVittie  <smcv@debian.org>
+
+	Set X-GNOME-UsesNotifications so we appear in gnome-control-center
+	Rename desktop entry to all-lower-case
+
+2013-03-02  Mantas Mikulėnas  <grawity@gmail.com>
+
+	Change 'gobject' to 'glib'
+
 2013-02-02  Jean-Philippe Braun  <eon@patapon.info>
 
 	Bump for 0.4 release
