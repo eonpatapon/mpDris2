@@ -627,6 +627,8 @@ class MPDWrapper(object):
                 title = 'Unknown Title'
                 if 'xesam:title' in metadata:
                     title = metadata['xesam:title']
+                elif 'xesam:url' in metadata:
+                    title = metadata['xesam:url'].split('/')[-1]
                 artist = 'Unknown Artist'
                 if 'xesam:artist' in metadata:
                     artist = ", ".join(metadata['xesam:artist'])
