@@ -20,6 +20,7 @@ mpDris2: mpDris2.in Makefile
 	srcdir=''
 	test -f ./$@.in || srcdir=$(srcdir)/
 	$(edit) $${srcdir}$@.in > $@.tmp
+	chmod +x $@.tmp
 	mv $@.tmp $@
 	ln -sf $@ $@.py
 
