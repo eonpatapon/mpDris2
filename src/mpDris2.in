@@ -749,6 +749,8 @@ class Notify:
         if params['notify']:
             if pynotify.init(identity):
                 self._notification = pynotify.Notification("", "", "")
+                self._notification.set_hint('desktop-entry', 'mpdris2')
+                self._notification.set_hint('transient', True)
             else:
                 logger.error('Failed to init libnotify; disabling'
                              'notifications')
@@ -760,8 +762,6 @@ class Notify:
         """ Issue a new notification """
         if self._notification:
             self._notification.update(title, body, uri)
-            self._notification.set_hint('desktop-entry', 'mpdris2')
-            self._notification.set_hint('transient', True)
             self._notification.show()
 
 
