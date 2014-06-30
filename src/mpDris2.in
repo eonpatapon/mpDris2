@@ -283,7 +283,7 @@ class MPDWrapper(object):
                 self._can_single = True
 
             if self._errors > 0:
-                notification.rnotify(identity, _('Reconnected'))
+                notification.notify(identity, _('Reconnected'))
                 logger.info('Reconnected to MPD server.')
             else:
                 logger.debug('Connected to MPD server.')
@@ -331,7 +331,7 @@ class MPDWrapper(object):
 
     def reconnect(self):
         logger.warning("Disconnected")
-        notification.rnotify(identity, _('Disconnected'), 'error')
+        notification.notify(identity, _('Disconnected'), 'error')
 
         # Release the DBus name and disconnect from bus
         self._dbus_service.release_name()
@@ -434,17 +434,17 @@ class MPDWrapper(object):
         logger.debug('Got GNOME mmkey "%s" for "%s"' % (key, appname))
         if key == 'Play':
             if self._status['state'] == 'play':
-                notification.rnotify(identity, _('Paused'))
+                notification.notify(identity, _('Paused'))
                 self.pause()
             else:
-                notification.rnotify(identity, _('Playing'))
+                notification.notify(identity, _('Playing'))
                 self.play()
         elif key == 'Next':
             self.next()
         elif key == 'Previous':
             self.previous()
         elif key == 'Stop':
-            notification.rnotify(identity, _('Stopped'))
+            notification.notify(identity, _('Stopped'))
             self.stop()
 
     def last_currentsong(self):
@@ -759,15 +759,9 @@ class Notify:
     def notify(self, title, body, uri=''):
         """ Issue a new notification """
         if self._notification:
-            self._notification = pynotify.Notification(title, body, uri)
+            self._notification.update(title, body, uri)
             self._notification.set_hint('desktop-entry', 'mpdris2')
             self._notification.set_hint('transient', True)
-            self._notification.show()
-
-    def rnotify(self, title, body, uri=''):
-        """ Replace current notification """
-        if self._notification:
-            self._notification.update(title, body, uri)
             self._notification.show()
 
 
@@ -989,7 +983,7 @@ class MPRISInterface(dbus.service.Object):
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Pause(self):
         mpd_wrapper.pause()
-        notification.rnotify(identity, _('Paused'))
+        notification.notify(identity, _('Paused'))
         return
 
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
@@ -997,16 +991,16 @@ class MPRISInterface(dbus.service.Object):
         status = mpd_wrapper.status()
         if status['state'] == 'play':
             mpd_wrapper.pause()
-            notification.rnotify(identity, _('Paused'))
+            notification.notify(identity, _('Paused'))
         else:
             mpd_wrapper.play()
-            notification.rnotify(identity, _('Playing'))
+            notification.notify(identity, _('Playing'))
         return
 
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Stop(self):
         mpd_wrapper.stop()
-        notification.rnotify(identity, _('Stopped'))
+        notification.notify(identity, _('Stopped'))
         return
 
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
