@@ -403,7 +403,7 @@ class MPDWrapper(object):
         except (socket.error, mpd.MPDError, socket.timeout):
             self.reconnect()
             return False
-        self._update_properties()
+        self._update_properties(force=False)
         if was_idle:
             self.idle_enter()
         return True
@@ -424,7 +424,7 @@ class MPDWrapper(object):
                     # subsystem list: <http://www.musicpd.org/doc/protocol/ch03.html>
                     if subsystem in ("player", "mixer", "options", "playlist"):
                         if not updated:
-                            self._update_properties()
+                            self._update_properties(force=True)
                             updated = True
                 self.idle_enter()
         return True
@@ -578,13 +578,15 @@ class MPDWrapper(object):
             self.timer_callback()
         return self._status.copy()
 
-    def _update_properties(self):
+    def _update_properties(self, force=False):
         old_status = self._status
         old_position = self._position
         old_time = self._time
         self._currentsong = self.currentsong()
         self._status = new_status = self.status()
         self._time = new_time = int(time.time())
+        logger.debug("_update_properties: current song = %r" % self._currentsong)
+        logger.debug("_update_properties: current status = %r" % self._status)
 
         if not new_status:
             return
@@ -604,7 +606,12 @@ class MPDWrapper(object):
             self._dbus_service.update_property('org.mpris.MediaPlayer2.Player',
                                                'PlaybackStatus')
 
-        if old_status.get('songid', None) == new_status.get('songid', None):
+        if not force:
+            old_id = old_status.get('songid', None)
+            new_id = new_status.get('songid', None)
+            force = (old_id != new_id)
+
+        if not force:
             if new_status['state'] == 'play':
                 expected_position = old_position + (new_time - old_time)
             else:
