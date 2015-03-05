@@ -1,0 +1,60 @@
+mpDris2 v0.7 (unreleased)
+
+ - Now compatible with both pygobject 2.x and 3.x (#62).
+
+ - When using pygobject 3.x, PyNotify is no longer needed – native GObject
+   bindings are used instead (#62).
+
+
+mpDris2 v0.6 (November 6, 2014)
+
+ - Fix updating of stream metadata (#60).
+
+ - Fix embedded cover images showing up as truncated/damaged.
+
+ - Show file name for tracks with no title (#54).
+
+
+mpDris2 v0.5 (March 9, 2014)
+
+ - Now compatible with both Python 2 and Python 3.
+
+ - Works better with various Python mpd bindings.
+
+ - Added support for embedded cover art using Mutagen (optional).
+
+ - Shows up in GNOME notification settings.
+
+
+mpDris2 v0.4 (February 2, 2013)
+
+ - Use the 'idle client' mpd feature to subscribe to updates, instead of
+   refreshing every 2 seconds. This makes updates instant when they happen
+   *and* greatly reduces CPU usage (and network traffic) in other cases.
+
+ - Support single-track repeat.
+
+ - Fix: Support multiple artist & composer values.
+
+ - Accept non-local music library paths.
+
+ - Support old python-mpd versions (Fedora 17 has v0.2).
+
+ - Honor $XDG_CONFIG_HOME and _DIRS. (Previously ~/.config was hardcoded.)
+
+
+mpDris2 v0.3 (October 14, 2012)
+
+ - Export playback rate properties over DBus.
+
+ - Fix: Use correct DBus types for metadata.
+
+
+mpDris2 v0.2 (June 23, 2012)
+
+ - Fix: Do not crash if music dir is not set.
+
+
+mpDris2 v0.1 (February 15, 2012)
+
+ - Initial release.
