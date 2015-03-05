@@ -68,11 +68,10 @@ except ImportError:
     except:
         pass
 
-gettext.bindtextdomain('mpDris2', '@datadir@/locale')
-gettext.textdomain('mpDris2')
 _ = gettext.gettext
 
 identity = "Music Player Daemon"
+
 params = {
     'progname': sys.argv[0],
     # Connection
@@ -1165,6 +1164,9 @@ Report bugs to https://github.com/eonpatapon/mpDris2/issues""" % params)
 
 if __name__ == '__main__':
     DBusGMainLoop(set_as_default=True)
+
+    gettext.bindtextdomain('mpDris2', '@datadir@/locale')
+    gettext.textdomain('mpDris2')
 
     music_dir = find_music_dir()
 
