@@ -47,11 +47,11 @@ try:
 except ImportError:
     import ConfigParser as configparser
 
-using_gi = False
+using_gi_glib = False
 
 try:
     from gi.repository import GLib as glib
-    using_gi = True
+    using_gi_glib = True
 except ImportError:
     import glib
 
@@ -315,7 +315,7 @@ class MPDWrapper(object):
                 self._poll_id = glib.timeout_add_seconds(interval,
                                                          self.timer_callback)
             if self._can_idle and not self._watch_id:
-                if using_gi:
+                if using_gi_glib:
                     self._watch_id = glib.io_add_watch(self,
                                                        glib.PRIORITY_DEFAULT,
                                                        glib.IO_IN | glib.IO_HUP,
@@ -770,7 +770,7 @@ class MPDWrapper(object):
             self.reconnect()
             return False
 
-class Notify:
+class NotifyWrapper(object):
     def __init__(self, params):
         if params['notify']:
             if pynotify.init(identity):
@@ -1234,7 +1234,7 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, handle_sigint)
 
     # Wrapper to send notifications
-    notification = Notify(params)
+    notification = NotifyWrapper(params)
 
     # Create wrapper to handle connection failures with MPD more gracefully
     mpd_wrapper = MPDWrapper(params)
