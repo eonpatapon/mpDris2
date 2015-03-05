@@ -50,10 +50,10 @@ except ImportError:
 using_gi_glib = False
 
 try:
-    from gi.repository import GLib as glib
+    from gi.repository import GLib
     using_gi_glib = True
 except ImportError:
-    import glib
+    import glib as GLib
 
 gettext.bindtextdomain('mpDris2', '@datadir@/locale')
 gettext.textdomain('mpDris2')
@@ -261,7 +261,7 @@ class MPDWrapper(object):
         Try to connect to MPD; retry every 5 seconds on failure.
         """
         if self.my_connect():
-            glib.timeout_add_seconds(5, self.my_connect)
+            GLib.timeout_add_seconds(5, self.my_connect)
             return False
         else:
             return True
@@ -312,17 +312,17 @@ class MPDWrapper(object):
             # Add periodic status check for sending MPRIS events
             if not self._poll_id:
                 interval = 15 if self._can_idle else 1
-                self._poll_id = glib.timeout_add_seconds(interval,
+                self._poll_id = GLib.timeout_add_seconds(interval,
                                                          self.timer_callback)
             if self._can_idle and not self._watch_id:
                 if using_gi_glib:
-                    self._watch_id = glib.io_add_watch(self,
-                                                       glib.PRIORITY_DEFAULT,
-                                                       glib.IO_IN | glib.IO_HUP,
+                    self._watch_id = GLib.io_add_watch(self,
+                                                       GLib.PRIORITY_DEFAULT,
+                                                       GLib.IO_IN | GLib.IO_HUP,
                                                        self.socket_callback)
                 else:
-                    self._watch_id = glib.io_add_watch(self,
-                                                       glib.IO_IN | glib.IO_HUP,
+                    self._watch_id = GLib.io_add_watch(self,
+                                                       GLib.IO_IN | GLib.IO_HUP,
                                                        self.socket_callback)
             # Reset error counter
             self._errors = 0
@@ -352,10 +352,10 @@ class MPDWrapper(object):
 
         # Stop monitoring
         if self._poll_id:
-            glib.source_remove(self._poll_id)
+            GLib.source_remove(self._poll_id)
             self._poll_id = None
         if self._watch_id:
-            glib.source_remove(self._watch_id)
+            GLib.source_remove(self._watch_id)
             self._watch_id = None
 
         # Clean mpd client state
@@ -423,10 +423,10 @@ class MPDWrapper(object):
 
     def socket_callback(self, fd, event):
         logger.debug("Socket event %r on fd %r" % (event, fd))
-        if event & glib.IO_HUP:
+        if event & GLib.IO_HUP:
             self.reconnect()
             return True
-        elif event & glib.IO_IN:
+        elif event & GLib.IO_IN:
             if self._idling:
                 self._idling = False
                 data = fd._fetch_objects("changed")
@@ -713,7 +713,7 @@ class MPDWrapper(object):
                 self.register_mediakeys()
                 return False
             # Timeout is necessary since g-s-d takes some time to load all plugins.
-            glib.timeout_add(600, reregister)
+            GLib.timeout_add(600, reregister)
 
     ## Compatibility functions
 
@@ -1230,7 +1230,7 @@ if __name__ == '__main__':
     else:
         logger.info('Mutagen not available, covers in music files will be ignored.')
 
-    loop = glib.MainLoop()
+    loop = GLib.MainLoop()
     signal.signal(signal.SIGINT, handle_sigint)
 
     # Wrapper to send notifications
