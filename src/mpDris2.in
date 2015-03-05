@@ -55,6 +55,19 @@ try:
 except ImportError:
     import glib as GLib
 
+using_gi_notify = False
+using_old_notify = False
+
+try:
+    from gi.repository import Notify
+    using_gi_notify = True
+except ImportError:
+    try:
+        import pynotify
+        using_old_notify = True
+    except:
+        pass
+
 gettext.bindtextdomain('mpDris2', '@datadir@/locale')
 gettext.textdomain('mpDris2')
 _ = gettext.gettext
@@ -70,14 +83,8 @@ params = {
     'music_dir': '',
     # Bling
     'mmkeys': True,
-    'notify': True,
+    'notify': (using_gi_notify or using_old_notify),
 }
-
-try:
-    import pynotify
-except:
-    params['notify'] = False
-
 
 notification = None
 
@@ -772,16 +779,25 @@ class MPDWrapper(object):
 
 class NotifyWrapper(object):
     def __init__(self, params):
-        if params['notify']:
-            if pynotify.init(identity):
-                self._notification = pynotify.Notification("", "", "")
-                self._notification.set_hint('desktop-entry', 'mpdris2')
-                self._notification.set_hint('transient', True)
-            else:
-                logger.error('Failed to init libnotify; disabling notifications')
-                self._notification = False
-        else:
-            self._notification = False
+        self._notification = None
+
+        if params["notify"]:
+            if using_gi_notify:
+                logger.debug("Initializing GObject.Notify")
+                if Notify.init(identity):
+                    self._notification = Notify.Notification()
+                    self._notification.set_hint("desktop-entry", GLib.Variant("s", "mpdris2"))
+                    self._notification.set_hint("transient", GLib.Variant("b", True))
+                else:
+                    logger.error("Failed to init libnotify; disabling notifications")
+            elif using_old_notify:
+                logger.debug("Initializing old pynotify")
+                if pynotify.init(identity):
+                    self._notification = pynotify.Notification("", "", "")
+                    self._notification.set_hint("desktop-entry", "mpdris2")
+                    self._notification.set_hint("transient", True)
+                else:
+                    logger.error("Failed to init libnotify; disabling notifications")
 
     def notify(self, title, body, uri=''):
         if self._notification:
