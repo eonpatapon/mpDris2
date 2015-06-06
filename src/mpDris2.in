@@ -922,12 +922,6 @@ class MPRISInterface(dbus.service.Object):
         else:
             return dbus.Int64(0)
 
-    def __can_next():
-        if 'nextsongid' in mpd_wrapper.last_status():
-            return True
-        else:
-            return False
-
     __player_interface = "org.mpris.MediaPlayer2.Player"
     __player_props = {
         "PlaybackStatus": (__get_playback_status, None),
@@ -939,7 +933,7 @@ class MPRISInterface(dbus.service.Object):
         "Position": (__get_position, None),
         "MinimumRate": (1.0, None),
         "MaximumRate": (1.0, None),
-        "CanGoNext": (__can_next, None),
+        "CanGoNext": (True, None),
         "CanGoPrevious": (True, None),
         "CanPlay": (True, None),
         "CanPause": (True, None),
