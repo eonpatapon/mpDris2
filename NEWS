@@ -5,6 +5,8 @@ mpDris2 v0.7 (unreleased)
  - When using pygobject 3.x, PyNotify is no longer needed – native GObject
    bindings are used instead (#62).
 
+ - Changed 'CanGoNext' to always return 'true' (#65).
+
 
 mpDris2 v0.6 (November 6, 2014)
 
