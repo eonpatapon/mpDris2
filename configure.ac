@@ -1,5 +1,5 @@
 AC_INIT([mpDris2], [0.6], [https://github.com/eonpatapon/mpDris2])
-AM_INIT_AUTOMAKE
+AM_INIT_AUTOMAKE([1.11 foreign])
 
 AM_PATH_PYTHON([2.5],, [:])
 
