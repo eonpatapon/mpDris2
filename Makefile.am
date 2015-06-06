@@ -3,9 +3,8 @@ dist_doc_DATA = README COPYING AUTHORS
 
 EXTRA_DIST = autogen.sh
 
-             
-dist-hook:                                                                      
-	rm -rf `find $(distdir) -name *~`
+dist-hook:
+	find $(distdir) -name "*~" -exec rm -vf {} +
 
 sysconfdirwarning:
 	@if test "${sysconfdir}" != "/etc"; then \

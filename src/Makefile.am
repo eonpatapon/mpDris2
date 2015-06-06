@@ -15,19 +15,9 @@ edit = sed -e 's|@bindir[@]|$(bindir)|g' \
 	   -e 's|@datadir[@]|$(datadir)|g'
 
 mpDris2: mpDris2.in Makefile
-	rm -f $@ $@.tmp
-	$(MKDIR_P) $(@D)
-	srcdir=''
-	test -f ./$@.in || srcdir=$(srcdir)/
-	$(edit) $${srcdir}$@.in > $@.tmp
-	chmod +x $@.tmp
-	mv $@.tmp $@
-	ln -sf $@ $@.py
+	$(AM_V_GEN) $(edit) $< > $@.tmp && mv $@.tmp $@
+	$(AM_V_at) chmod a+x $@
+	$(AM_V_at) ln -sf $@ $@.py
 
 org.mpris.MediaPlayer2.mpd.service: org.mpris.MediaPlayer2.mpd.service.in Makefile
-	rm -f $@ $@.tmp
-	$(MKDIR_P) $(@D)
-	srcdir=''
-	test -f ./$@.in || srcdir=$(srcdir)/
-	$(edit) $${srcdir}$@.in > $@.tmp
-	mv $@.tmp $@
+	$(AM_V_GEN) $(edit) $< > $@.tmp && mv $@.tmp $@
