@@ -4,7 +4,7 @@ AC_INIT([mpDris2],
 	[mpdris2],
 	[https://github.com/eonpatapon/mpDris2])
 AC_CONFIG_AUX_DIR([build-aux])
-AM_INIT_AUTOMAKE([1.11 foreign])
+AM_INIT_AUTOMAKE([1.11 tar-ustar foreign])
 
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 
