@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2012-02-05 12:36+0100\n"
+"POT-Creation-Date: 2015-08-08 11:34+0200\n"
 "PO-Revision-Date: 2012-02-05 12:20+0100\n"
 "Last-Translator: Jean-Philippe Braun <eon@patapon.info>\n"
 "Language-Team: Jean-Philippe Braun <eon@patapon.info>\n"
@@ -12,27 +12,28 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../src/mpDris2.py:248
+#: ../src/mpDris2.py:299
 msgid "Reconnected"
 msgstr "Reconnecté"
 
-#: ../src/mpDris2.py:300
+#: ../src/mpDris2.py:353
 msgid "Disconnected"
 msgstr "Déconnecté"
 
-#: ../src/mpDris2.py:323
-#, python-format
-msgid "by %s"
-msgstr "par %s"
-
-#: ../src/mpDris2.py:351 ../src/mpDris2.py:571 ../src/mpDris2.py:579
+#: ../src/mpDris2.py:456 ../src/mpDris2.py:1019 ../src/mpDris2.py:1027
 msgid "Paused"
 msgstr "En pause"
 
-#: ../src/mpDris2.py:354 ../src/mpDris2.py:582 ../src/mpDris2.py:594
+#: ../src/mpDris2.py:459 ../src/mpDris2.py:1030 ../src/mpDris2.py:1042
 msgid "Playing"
 msgstr "En cours"
 
-#: ../src/mpDris2.py:361 ../src/mpDris2.py:588
+#: ../src/mpDris2.py:466 ../src/mpDris2.py:1036
 msgid "Stopped"
 msgstr "Stoppé"
+
+#. FIXME: maybe this could be done in a nicer way?
+#: ../src/mpDris2.py:669
+#, python-format
+msgid "by %s"
+msgstr "par %s"
