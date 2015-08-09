@@ -81,7 +81,7 @@ params = {
     # Library
     'music_dir': '',
     'cover_regex': re.compile(
-                    r'^ (album|cover|\.?folder|front) .* \.(gif|jpe?g|png) $',
+                    r'^(album|cover|\.?folder|front).*\.(gif|jpeg|jpg|png)$',
                     re.I | re.X)
     # Bling
     'mmkeys': True,
