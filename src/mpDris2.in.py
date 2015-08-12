@@ -1079,13 +1079,6 @@ class MPRISInterface(dbus.service.Object):
         # TODO
         return
 
-
-# Handle signals more gracefully
-def handle_sigint(signum, frame):
-    logger.debug('Caught SIGINT, exiting.')
-    loop.quit()
-
-
 def each_xdg_config(suffix):
     """
     Return each location matching XDG_CONFIG_DIRS/suffix in descending
@@ -1247,8 +1240,12 @@ if __name__ == '__main__':
     else:
         logger.info('Mutagen not available, covers in music files will be ignored.')
 
+    # Set up the main loop
+    if using_gi_glib:
+        logger.debug('Using GObject-Introspection main loop.')
+    else:
+        logger.debug('Using legacy pygobject2 main loop.')
     loop = GLib.MainLoop()
-    signal.signal(signal.SIGINT, handle_sigint)
 
     # Wrapper to send notifications
     notification = NotifyWrapper(params)
@@ -1258,7 +1255,10 @@ if __name__ == '__main__':
     mpd_wrapper.run()
 
     # Run idle loop
-    loop.run()
+    try:
+        loop.run()
+    except KeyboardInterrupt:
+        logger.debug('Caught SIGINT, exiting.')
 
     # Clean up
     try:
