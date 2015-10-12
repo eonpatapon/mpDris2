@@ -4,3 +4,7 @@ Description=mpDris2 - Music Player Daemon D-Bus bridge
 [Service]
 ExecStart=@bindir@/mpDris2
 BusName=org.mpris.MediaPlayer2.mpd
+
+[Install]
+WantedBy=default.target
+# WantedBy=daemon.target
