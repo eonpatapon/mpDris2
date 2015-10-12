@@ -47,6 +47,12 @@ try:
 except ImportError:
     import ConfigParser as configparser
 
+try:
+    import gi
+    gi.require_version('Notify', '0.7')
+except ImportError:
+    pass
+
 using_gi_glib = False
 
 try:
