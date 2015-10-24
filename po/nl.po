@@ -1,0 +1,40 @@
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2015-10-24 18:22+0200\n"
+"PO-Revision-Date: 2015-10-24 18:23+0100\n"
+"Last-Translator: Daan Sprenkels <dsprenkels@gmail.com>\n"
+"Language-Team: Jean-Philippe Braun <eon@patapon.info>\n"
+"Language: nl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: ../src/mpDris2.in.py:304
+msgid "Reconnected"
+msgstr "Verbinding hersteld"
+
+#: ../src/mpDris2.in.py:358
+msgid "Disconnected"
+msgstr "Verbinding verbroken"
+
+#: ../src/mpDris2.in.py:461 ../src/mpDris2.in.py:1024
+#: ../src/mpDris2.in.py:1032
+msgid "Paused"
+msgstr "Gepauzeerd"
+
+#: ../src/mpDris2.in.py:464 ../src/mpDris2.in.py:1035
+#: ../src/mpDris2.in.py:1047
+msgid "Playing"
+msgstr "Aan het afspelen"
+
+#: ../src/mpDris2.in.py:471 ../src/mpDris2.in.py:1041
+msgid "Stopped"
+msgstr "Gestopt"
+
+#: ../src/mpDris2.in.py:674
+#, python-format
+msgid "by %s"
+msgstr "van %s"
