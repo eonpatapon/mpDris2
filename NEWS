@@ -1,4 +1,4 @@
-mpDris2 v0.7 (unreleased)
+mpDris2 v0.7 (December 18, 2015)
 
  - Now compatible with both pygobject 2.x and 3.x (#62).
 
@@ -6,6 +6,14 @@ mpDris2 v0.7 (unreleased)
    bindings are used instead (#62).
 
  - Changed 'CanGoNext' to always return 'true' (#65).
+
+ - Configurable cover matching regexp
+
+ - music_dir setting moved in Library section
+
+ - Systemd user service file
+
+ - New dutch translations
 
 
 mpDris2 v0.6 (November 6, 2014)
