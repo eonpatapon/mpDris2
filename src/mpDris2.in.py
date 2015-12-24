@@ -458,18 +458,18 @@ class MPDWrapper(object):
         logger.debug('Got GNOME mmkey "%s" for "%s"' % (key, appname))
         if key == 'Play':
             if self._status['state'] == 'play':
-                notification.notify(identity, _('Paused'))
                 self.pause()
+                notification.notify(identity, _('Paused'))
             else:
-                notification.notify(identity, _('Playing'))
                 self.play()
+                notification.notify(identity, _('Playing'))
         elif key == 'Next':
             self.next()
         elif key == 'Previous':
             self.previous()
         elif key == 'Stop':
-            notification.notify(identity, _('Stopped'))
             self.stop()
+            notification.notify(identity, _('Stopped'))
 
     def last_currentsong(self):
         return self._currentsong.copy()
