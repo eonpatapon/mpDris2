@@ -683,7 +683,8 @@ class MPDWrapper(object):
             self.update_metadata()
             new_meta = self._dbus_service.update_property('org.mpris.MediaPlayer2.Player',
                                                           'Metadata')
-            if self._params['notify']:
+
+            if self._params['notify'] and new_status['state'] != 'stop':
                 if old_meta.get('xesam:artist', None) != new_meta.get('xesam:artist', None) \
                     or old_meta.get('xesam:album', None) != new_meta.get('xesam:album', None) \
                     or old_meta.get('xesam:title', None) != new_meta.get('xesam:title', None) \
