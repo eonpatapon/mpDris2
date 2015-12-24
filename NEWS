@@ -1,3 +1,7 @@
+mpDris2 v0.8 (unreleased)
+
+ - "Playing" and "Paused" notifications now show song information (#71).
+
 mpDris2 v0.7 (December 18, 2015)
 
  - Now compatible with both pygobject 2.x and 3.x (#62).
