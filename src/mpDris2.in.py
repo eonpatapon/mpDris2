@@ -259,6 +259,7 @@ class MPDWrapper(object):
             'repeat': None,
         }
         self._metadata = {}
+        self._temp_song_url = None
         self._temp_cover = None
         self._position = 0
         self._time = 0
@@ -379,6 +380,7 @@ class MPDWrapper(object):
         self.run()
 
     def disconnect(self):
+        self._temp_song_url = None
         if self._temp_cover:
             self._temp_cover.close()
             self._temp_cover = None
@@ -580,22 +582,33 @@ class MPDWrapper(object):
         if 'xesam:artist' in meta:
             artist = ", ".join(meta['xesam:artist'])
 
+        logger.debug("Sending notification for %r by %r icon %r" % (title, artist, uri))
         notification.notify(title, _('by %s') % artist, uri)
 
     def find_cover(self, song_url):
         if song_url.startswith('file://'):
             song_path = song_url[7:]
             song_dir = os.path.dirname(song_path)
+
+            # Try existing temporary file
             if self._temp_cover:
-                self._temp_cover.close()
+                if song_url == self._temp_song_url:
+                    logger.debug("find_cover: Reusing old image at %r" % self._temp_cover.name)
+                    return 'file://' + self._temp_cover.name
+                else:
+                    logger.debug("find_cover: Cleaning up old image at %r" % self._temp_cover.name)
+                    self._temp_song_url = None
+                    self._temp_cover.close()
 
             # Search for embedded cover art
             if mutagen and os.path.exists(song_path):
                 song = mutagen.File(song_path)
                 if 'APIC:' in song.tags:
-                    self._temp_cover = tempfile.NamedTemporaryFile(suffix='.jpg')
+                    self._temp_song_url = song_url
+                    self._temp_cover = tempfile.NamedTemporaryFile(prefix='cover-', suffix='.jpg')
                     self._temp_cover.write(song.tags['APIC:'].data)
                     self._temp_cover.flush()
+                    logger.debug("find_cover: Storing embedded image at %r" % self._temp_cover.name)
                     return 'file://' + self._temp_cover.name
 
             # Look in song directory for common album cover files
