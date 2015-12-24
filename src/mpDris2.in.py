@@ -461,10 +461,10 @@ class MPDWrapper(object):
         if key == 'Play':
             if self._status['state'] == 'play':
                 self.pause()
-                notification.notify(identity, _('Paused'))
+                self.notify_about_track(self.metadata, 'pause')
             else:
                 self.play()
-                self.notify_about_track(self.metadata)
+                self.notify_about_track(self.metadata, 'play')
         elif key == 'Next':
             self.next()
         elif key == 'Previous':
@@ -567,7 +567,7 @@ class MPDWrapper(object):
                 logger.error("Can't cast value %r to %s" %
                              (value, allowed_tags[key]))
 
-    def notify_about_track(self, meta):
+    def notify_about_track(self, meta, state='play'):
         uri = 'sound'
         if 'mpris:artUrl' in meta:
             uri = meta['mpris:artUrl']
@@ -582,8 +582,13 @@ class MPDWrapper(object):
         if 'xesam:artist' in meta:
             artist = ", ".join(meta['xesam:artist'])
 
-        logger.debug("Sending notification for %r by %r icon %r" % (title, artist, uri))
-        notification.notify(title, _('by %s') % artist, uri)
+        body = _('by %s') % artist
+
+        if state == 'pause':
+            uri = 'media-playback-pause-symbolic'
+            body += ' (%s)' % _('Paused')
+
+        notification.notify(title, body, uri)
 
     def find_cover(self, song_url):
         if song_url.startswith('file://'):
@@ -689,7 +694,7 @@ class MPDWrapper(object):
                     or old_meta.get('xesam:album', None) != new_meta.get('xesam:album', None) \
                     or old_meta.get('xesam:title', None) != new_meta.get('xesam:title', None) \
                     or old_meta.get('xesam:url', None) != new_meta.get('xesam:url', None):
-                    self.notify_about_track(new_meta)
+                    self.notify_about_track(new_meta, new_status['state'])
 
         # "mixer" subsystem
 
