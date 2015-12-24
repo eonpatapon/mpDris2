@@ -471,7 +471,7 @@ class MPDWrapper(object):
             self.previous()
         elif key == 'Stop':
             self.stop()
-            notification.notify(identity, _('Stopped'))
+            notification.notify(identity, _('Stopped'), 'media-playback-stop-symbolic')
 
     def last_currentsong(self):
         return self._currentsong.copy()
