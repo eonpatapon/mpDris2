@@ -461,17 +461,17 @@ class MPDWrapper(object):
         if key == 'Play':
             if self._status['state'] == 'play':
                 self.pause()
-                self.notify_about_track(self.metadata, 'pause')
+                self.notify_about_state('pause')
             else:
                 self.play()
-                self.notify_about_track(self.metadata, 'play')
+                self.notify_about_state('play')
         elif key == 'Next':
             self.next()
         elif key == 'Previous':
             self.previous()
         elif key == 'Stop':
             self.stop()
-            notification.notify(identity, _('Stopped'), 'media-playback-stop-symbolic')
+            self.notify_about_state('stop')
 
     def last_currentsong(self):
         return self._currentsong.copy()
@@ -589,6 +589,12 @@ class MPDWrapper(object):
             body += ' (%s)' % _('Paused')
 
         notification.notify(title, body, uri)
+
+    def notify_about_state(self, state):
+        if state == 'stop':
+            notification.notify(identity, _('Stopped'), 'media-playback-stop-symbolic')
+        else:
+            self.notify_about_track(self.metadata, state)
 
     def find_cover(self, song_url):
         if song_url.startswith('file://'):
@@ -1044,7 +1050,7 @@ class MPRISInterface(dbus.service.Object):
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Pause(self):
         mpd_wrapper.pause()
-        notification.notify(identity, _('Paused'))
+        mpd_wrapper.notify_about_state('pause')
         return
 
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
@@ -1052,22 +1058,22 @@ class MPRISInterface(dbus.service.Object):
         status = mpd_wrapper.status()
         if status['state'] == 'play':
             mpd_wrapper.pause()
-            notification.notify(identity, _('Paused'))
+            mpd_wrapper.notify_about_state('pause')
         else:
             mpd_wrapper.play()
-            notification.notify(identity, _('Playing'))
+            mpd_wrapper.notify_about_state('play')
         return
 
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Stop(self):
         mpd_wrapper.stop()
-        notification.notify(identity, _('Stopped'))
+        mpd_wrapper.notify_about_state('stop')
         return
 
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Play(self):
         mpd_wrapper.play()
-        notification.notify(identity, _('Playing'))
+        mpd_wrapper.notify_about_state('play')
         return
 
     @dbus.service.method(__player_interface, in_signature='x', out_signature='')
