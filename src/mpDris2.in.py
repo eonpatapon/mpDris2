@@ -462,7 +462,7 @@ class MPDWrapper(object):
                 notification.notify(identity, _('Paused'))
             else:
                 self.play()
-                notification.notify(identity, _('Playing'))
+                self.notify_about_track(self.metadata)
         elif key == 'Next':
             self.next()
         elif key == 'Previous':
@@ -565,6 +565,23 @@ class MPDWrapper(object):
                 logger.error("Can't cast value %r to %s" %
                              (value, allowed_tags[key]))
 
+    def notify_about_track(self, meta):
+        uri = 'sound'
+        if 'mpris:artUrl' in meta:
+            uri = meta['mpris:artUrl']
+
+        title = 'Unknown Title'
+        if 'xesam:title' in meta:
+            title = meta['xesam:title']
+        elif 'xesam:url' in meta:
+            title = meta['xesam:url'].split('/')[-1]
+
+        artist = 'Unknown Artist'
+        if 'xesam:artist' in meta:
+            artist = ", ".join(meta['xesam:artist'])
+
+        notification.notify(title, _('by %s') % artist, uri)
+
     def find_cover(self, song_url):
         if song_url.startswith('file://'):
             song_path = song_url[7:]
@@ -658,20 +675,7 @@ class MPDWrapper(object):
                     or old_meta.get('xesam:album', None) != new_meta.get('xesam:album', None) \
                     or old_meta.get('xesam:title', None) != new_meta.get('xesam:title', None) \
                     or old_meta.get('xesam:url', None) != new_meta.get('xesam:url', None):
-
-                    uri = 'sound'
-                    if 'mpris:artUrl' in new_meta:
-                        uri = new_meta['mpris:artUrl']
-                    title = 'Unknown Title'
-                    if 'xesam:title' in new_meta:
-                        title = new_meta['xesam:title']
-                    elif 'xesam:url' in new_meta:
-                        title = new_meta['xesam:url'].split('/')[-1]
-                    artist = 'Unknown Artist'
-                    if 'xesam:artist' in new_meta:
-                        artist = ", ".join(new_meta['xesam:artist'])
-
-                    notification.notify(title, _('by %s') % artist, uri)
+                    self.notify_about_track(new_meta)
 
         # "mixer" subsystem
 
