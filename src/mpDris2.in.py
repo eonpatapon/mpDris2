@@ -654,23 +654,23 @@ class MPDWrapper(object):
             new_meta = self._dbus_service.update_property('org.mpris.MediaPlayer2.Player',
                                                           'Metadata')
             if self._params['notify']:
-                uri = 'sound'
-                if 'mpris:artUrl' in new_meta:
-                    uri = new_meta['mpris:artUrl']
-                title = 'Unknown Title'
-                if 'xesam:title' in new_meta:
-                    title = new_meta['xesam:title']
-                elif 'xesam:url' in new_meta:
-                    title = new_meta['xesam:url'].split('/')[-1]
-                artist = 'Unknown Artist'
-                if 'xesam:artist' in new_meta:
-                    artist = ", ".join(new_meta['xesam:artist'])
-
                 if old_meta.get('xesam:artist', None) != new_meta.get('xesam:artist', None) \
                     or old_meta.get('xesam:album', None) != new_meta.get('xesam:album', None) \
                     or old_meta.get('xesam:title', None) != new_meta.get('xesam:title', None) \
                     or old_meta.get('xesam:url', None) != new_meta.get('xesam:url', None):
-                    # FIXME: maybe this could be done in a nicer way?
+
+                    uri = 'sound'
+                    if 'mpris:artUrl' in new_meta:
+                        uri = new_meta['mpris:artUrl']
+                    title = 'Unknown Title'
+                    if 'xesam:title' in new_meta:
+                        title = new_meta['xesam:title']
+                    elif 'xesam:url' in new_meta:
+                        title = new_meta['xesam:url'].split('/')[-1]
+                    artist = 'Unknown Artist'
+                    if 'xesam:artist' in new_meta:
+                        artist = ", ".join(new_meta['xesam:artist'])
+
                     notification.notify(title, _('by %s') % artist, uri)
 
         # "mixer" subsystem
