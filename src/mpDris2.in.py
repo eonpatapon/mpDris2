@@ -779,7 +779,7 @@ class MPDWrapper(object):
             return self.client._fetch_object(*args)
     elif hasattr(mpd.MPDClient, "_getobject"):
         def _fetch_object(self, *args):
-            return self.client._writecommand(*args)
+            return self.client._getobject(*args)
 
     if hasattr(mpd.MPDClient, "_fetch_objects"):
         def _fetch_objects(self, *args):
