@@ -25,7 +25,6 @@ import os
 import sys
 import re
 import shlex
-import signal
 import socket
 import getopt
 import mpd
@@ -232,6 +231,7 @@ MPRIS2_INTROSPECTION = """<node name="/org/mpris/MediaPlayer2">
 urlhandlers = ['http://']
 downloaded_covers = ['~/.covers/%s-%s.jpg']
 
+
 class MPDWrapper(object):
     """ Wrapper of mpd.MPDClient to handle socket
         errors and similar
@@ -242,7 +242,7 @@ class MPDWrapper(object):
 
         self._dbus = dbus
         self._params = params
-        self._dbus_service = False
+        self._dbus_service = None
 
         self._can_single = False
         self._can_idle = False
@@ -278,6 +278,10 @@ class MPDWrapper(object):
         else:
             return True
 
+    @property
+    def connected(self):
+        return self.client._sock is not None
+
     def my_connect(self):
         """ Init MPD connection """
         try:
@@ -287,7 +291,11 @@ class MPDWrapper(object):
 
             self.client.connect(self._params['host'], self._params['port'])
             if params['password']:
-                self.password(self._params['password'])
+                try:
+                    self.client.password(self._params['password'])
+                except mpd.CommandError as e:
+                    logger.error(e)
+                    sys.exit(1)
 
             commands = self.commands()
             # added in 0.11
@@ -350,16 +358,14 @@ class MPDWrapper(object):
             if self._errors == 6:
                 logger.info('Continue to connect but going silent')
             return True
-        except mpd.CommandError as e:
-            logger.error('MPD command error: %s' % e)
-            return True
 
     def reconnect(self):
         logger.warning("Disconnected")
         notification.notify(identity, _('Disconnected'), 'error')
 
         # Release the DBus name and disconnect from bus
-        self._dbus_service.release_name()
+        if self._dbus_service is not None:
+            self._dbus_service.release_name()
         #self._dbus_service.remove_from_connection()
 
         # Stop monitoring
@@ -763,7 +769,7 @@ class MPDWrapper(object):
             return self.client.fileno()
     else:
         def fileno(self):
-            if self.client._sock is None:
+            if not self.connected:
                 raise mpd.ConnectionError("Not connected")
             return self.client._sock.fileno()
 
@@ -1234,7 +1240,7 @@ if __name__ == '__main__':
     for (opt, arg) in opts:
         if opt in ['-h', '--help']:
             usage(params)
-            sys.exit()
+            sys.exit(0)
         elif opt in ['-p', '--path']:
             music_dir = arg
         elif opt in ['-d', '--debug']:
