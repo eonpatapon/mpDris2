@@ -19,6 +19,7 @@
 # Based on mpDris from: Erik Karlsson <pilo@ayeon.org>
 # Some bits taken from quodlibet mpris plugin by <christoph.reiter@gmx.at>
 
+
 from __future__ import print_function
 
 import os
@@ -35,6 +36,9 @@ import logging
 import gettext
 import time
 import tempfile
+
+__version__ = "@version@"
+__git_version__ = "@gitversion@"
 
 try:
     import mutagen
@@ -1184,6 +1188,7 @@ Note: Environment variables MPD_HOST and MPD_PORT can be used instead of above
 
      -p, --path=PATH        Sets the library path of MPD to PATH
      -d, --debug            Run in debug mode
+     -v, --version          mpDris2 version
 
 Default: MPD_HOST: %(host)s, MPD_PORT: %(port)s
 
@@ -1226,13 +1231,13 @@ if __name__ == '__main__':
             params[bling] = config.getboolean('Bling', bling)
 
     try:
-        (opts, args) = getopt.getopt(sys.argv[1:], 'hdp:', ['help', 'debug', 'path='])
+        (opts, args) = getopt.getopt(sys.argv[1:], 'hdvp:', ['help', 'debug', 'version', 'path='])
     except getopt.GetoptError as ex:
         (msg, opt) = ex.args
         print("%s: %s" % (sys.argv[0], msg))
         print()
         usage(params)
-        sys.exit(2)
+        exit(2)
 
     log_format = '%(asctime)s %(module)s %(levelname)s: %(message)s'
     log_level = logging.INFO
@@ -1245,6 +1250,12 @@ if __name__ == '__main__':
             music_dir = arg
         elif opt in ['-d', '--debug']:
             log_level = logging.DEBUG
+        elif opt in ['-v', '--version']:
+            v = __version__
+            if __git_version__:
+                v = __git_version__
+            print("mpDris2 version %s" % v)
+            sys.exit()
 
     logging.basicConfig(format=log_format, level=log_level)
     logger = logging.getLogger('mpDris2')

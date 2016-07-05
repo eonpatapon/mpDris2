@@ -10,6 +10,10 @@ m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 
 AM_PATH_PYTHON([2.5],, [:])
 
+define([gitversion], esyscmd([sh -c "which git > /dev/null && (git describe | tr -d '\n' || false)"]))
+GITVERSION="gitversion"
+AC_SUBST(GITVERSION)
+
 GETTEXT_PACKAGE=mpDris2
 AC_SUBST(GETTEXT_PACKAGE)
 AC_DEFINE_UNQUOTED(GETTEXT_PACKAGE, "$GETTEXT_PACKAGE",

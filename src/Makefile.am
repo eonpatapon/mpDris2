@@ -21,7 +21,9 @@ CLEANFILES = \
 	mpDris2
 
 edit = sed -e 's|@bindir[@]|$(bindir)|g' \
-	   -e 's|@datadir[@]|$(datadir)|g'
+	   -e 's|@datadir[@]|$(datadir)|g' \
+	   -e 's|@gitversion[@]|$(GITVERSION)|g' \
+	   -e 's|@version[@]|$(VERSION)|g'
 
 mpDris2: mpDris2.in.py Makefile
 	$(AM_V_GEN) $(edit) $< > $@.tmp && mv $@.tmp $@
