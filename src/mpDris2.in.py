@@ -52,12 +52,8 @@ except ImportError:
 
 try:
     import gi
-except ImportError:
-    pass
-
-try:
     gi.require_version('Notify', '0.7')
-except ValueError:
+except (ImportError, ValueError):
     pass
 
 using_gi_glib = False
