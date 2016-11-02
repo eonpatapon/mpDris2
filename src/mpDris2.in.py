@@ -118,7 +118,7 @@ allowed_tags = {
     'xesam:lyricist': str,
     'xesam:title': str,
     'xesam:trackNumber': int,
-    'xesam:url': str,
+    'xesam:url': unicode,
     'xesam:useCount': int,
     'xesam:userRating': float,
 }
@@ -560,9 +560,10 @@ class MPDWrapper(object):
                 self._metadata['xesam:album'] = mpd_meta['name']
 
         if 'file' in mpd_meta:
-            song_url = mpd_meta['file']
+            song_url = unicode(mpd_meta['file'], 'utf-8')
             if not any([song_url.startswith(prefix) for prefix in urlhandlers]):
-                song_url = os.path.join(params['music_dir'], song_url)
+                song_url = os.path.join(params['music_dir'],
+                        song_url)
             self._metadata['xesam:url'] = song_url
             cover = self.find_cover(song_url)
             if cover:
