@@ -36,9 +36,11 @@ import logging
 import gettext
 import time
 import tempfile
+import codecs
 
 __version__ = "@version@"
 __git_version__ = "@gitversion@"
+__py3__ = sys.version_info > (3,)
 
 try:
     import mutagen
@@ -118,10 +120,13 @@ allowed_tags = {
     'xesam:lyricist': str,
     'xesam:title': str,
     'xesam:trackNumber': int,
-    'xesam:url': unicode,
     'xesam:useCount': int,
     'xesam:userRating': float,
 }
+if __py3__:
+    allowed_tags['xesam:url'] = str
+else:
+    allowed_tags['xesam:url'] = unicode
 
 # python dbus bindings don't include annotations and properties
 MPRIS2_INTROSPECTION = """<node name="/org/mpris/MediaPlayer2">
@@ -560,7 +565,11 @@ class MPDWrapper(object):
                 self._metadata['xesam:album'] = mpd_meta['name']
 
         if 'file' in mpd_meta:
-            song_url = unicode(mpd_meta['file'], 'utf-8')
+            if __py3__:
+                song_url = mpd_meta['file']
+            else:
+                song_url = unicode(mpd_meta['file'], 'utf-8')
+
             if not any([song_url.startswith(prefix) for prefix in urlhandlers]):
                 song_url = os.path.join(params['music_dir'],
                         song_url)
