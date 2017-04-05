@@ -470,7 +470,7 @@ class MPDWrapper(object):
         logger.debug('Got GNOME mmkey "%s" for "%s"' % (key, appname))
         if key == 'Play':
             if self._status['state'] == 'play':
-                self.pause()
+                self.pause(1)
                 self.notify_about_state('pause')
             else:
                 self.play()
@@ -1059,7 +1059,7 @@ class MPRISInterface(dbus.service.Object):
 
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Pause(self):
-        mpd_wrapper.pause()
+        mpd_wrapper.pause(1)
         mpd_wrapper.notify_about_state('pause')
         return
 
@@ -1067,7 +1067,7 @@ class MPRISInterface(dbus.service.Object):
     def PlayPause(self):
         status = mpd_wrapper.status()
         if status['state'] == 'play':
-            mpd_wrapper.pause()
+            mpd_wrapper.pause(1)
             mpd_wrapper.notify_about_state('pause')
         else:
             mpd_wrapper.play()
