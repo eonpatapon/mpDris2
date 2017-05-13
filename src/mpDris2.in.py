@@ -1234,8 +1234,8 @@ if __name__ == '__main__':
         (opts, args) = getopt.getopt(sys.argv[1:], 'hdvp:', ['help', 'debug', 'version', 'path='])
     except getopt.GetoptError as ex:
         (msg, opt) = ex.args
-        print("%s: %s" % (sys.argv[0], msg))
-        print()
+        print("%s: %s" % (sys.argv[0], msg), file=sys.stderr)
+        print(file=sys.stderr)
         usage(params)
         exit(2)
 
