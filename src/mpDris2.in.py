@@ -1283,7 +1283,7 @@ if __name__ == '__main__':
             if config.has_option('Connection', p):
                 params[p] = config.get('Connection', p)
             else:
-                params[p] = defaults[p])
+                params[p] = defaults[p]
 
     if '@' in params['host']:
         params['password'], params['host'] = params['host'].rsplit('@', 1)
