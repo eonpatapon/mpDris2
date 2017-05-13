@@ -1186,7 +1186,8 @@ Usage: %(progname)s [OPTION]... [MPD_HOST] [MPD_PORT]
 Note: Environment variables MPD_HOST and MPD_PORT can be used instead of above
       arguments.
 
-     -p, --path=PATH        Sets the library path of MPD to PATH
+     -c, --config=PATH      Read a custom configuration file
+     -p, --path=PATH        Set the music library path
      -d, --debug            Run in debug mode
      -v, --version          mpDris2 version
 
@@ -1200,11 +1201,13 @@ if __name__ == '__main__':
 
     log_format = '%(asctime)s %(module)s %(levelname)s: %(message)s'
     log_level = logging.INFO
+    config_file = None
     music_dir = None
 
     # Parse command line
     try:
-        (opts, args) = getopt.getopt(sys.argv[1:], 'hdvp:', ['help', 'debug', 'version', 'path='])
+        (opts, args) = getopt.getopt(sys.argv[1:], 'hc:dp:v',
+                                     ['help', 'config=', 'debug', 'path=', 'version'])
     except getopt.GetoptError as ex:
         (msg, opt) = ex.args
         print("%s: %s" % (sys.argv[0], msg), file=sys.stderr)
@@ -1216,10 +1219,12 @@ if __name__ == '__main__':
         if opt in ['-h', '--help']:
             usage(params)
             sys.exit()
-        elif opt in ['-p', '--path']:
-            music_dir = arg
+        elif opt in ['-c', '--config']:
+            config_file = arg
         elif opt in ['-d', '--debug']:
             log_level = logging.DEBUG
+        elif opt in ['-p', '--path']:
+            music_dir = arg
         elif opt in ['-v', '--version']:
             v = __version__
             if __git_version__:
@@ -1251,8 +1256,11 @@ if __name__ == '__main__':
 
     # Read configuration
     config = configparser.SafeConfigParser()
-    config.read(['/etc/mpDris2.conf'] +
-                list(reversed(each_xdg_config('mpDris2/mpDris2.conf'))))
+    if config_file:
+        config.read([config_file])
+    else:
+        config.read(['/etc/mpDris2.conf'] +
+                    list(reversed(each_xdg_config('mpDris2/mpDris2.conf'))))
 
     if 'host' not in params:
         if config.has_option('Connection', 'host'):
