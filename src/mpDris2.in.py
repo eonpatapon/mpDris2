@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -1272,7 +1272,7 @@ if __name__ == '__main__':
     config = configparser.SafeConfigParser()
     if config_file:
         with open(config_file) as fh:
-            config.read_file(fh)
+            config.read(config_file)
     else:
         config.read(['/etc/mpDris2.conf'] +
                     list(reversed(each_xdg_config('mpDris2/mpDris2.conf'))))

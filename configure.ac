@@ -8,7 +8,7 @@ AM_INIT_AUTOMAKE([1.11 tar-ustar foreign])
 
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 
-AM_PATH_PYTHON([2.5],, [:])
+AM_PATH_PYTHON([3.4],, [:])
 
 define([gitversion], esyscmd([sh -c "which git > /dev/null && (git describe | tr -d '\n' || false)"]))
 GITVERSION="gitversion"
