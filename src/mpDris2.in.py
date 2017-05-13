@@ -1237,7 +1237,7 @@ if __name__ == '__main__':
         print("%s: %s" % (sys.argv[0], msg), file=sys.stderr)
         print(file=sys.stderr)
         usage(params)
-        exit(2)
+        sys.exit(2)
 
     log_format = '%(asctime)s %(module)s %(levelname)s: %(message)s'
     log_level = logging.INFO
@@ -1245,7 +1245,7 @@ if __name__ == '__main__':
     for (opt, arg) in opts:
         if opt in ['-h', '--help']:
             usage(params)
-            sys.exit(0)
+            sys.exit()
         elif opt in ['-p', '--path']:
             music_dir = arg
         elif opt in ['-d', '--debug']:
