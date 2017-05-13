@@ -302,7 +302,7 @@ class MPDWrapper(object):
             self._can_single = False
 
             self.client.connect(self._params['host'], self._params['port'])
-            if params['password']:
+            if self._params['password']:
                 try:
                     self.client.password(self._params['password'])
                 except mpd.CommandError as e:
@@ -570,7 +570,7 @@ class MPDWrapper(object):
         if 'file' in mpd_meta:
             song_url = mpd_meta['file']
             if not any([song_url.startswith(prefix) for prefix in urlhandlers]):
-                song_url = os.path.join(params['music_dir'], song_url)
+                song_url = os.path.join(self._params['music_dir'], song_url)
             self._metadata['xesam:url'] = song_url
             cover = self.find_cover(song_url)
             if cover:
@@ -643,7 +643,7 @@ class MPDWrapper(object):
             # Look in song directory for common album cover files
             if os.path.exists(song_dir):
                 for f in os.listdir(song_dir):
-                    if params['cover_regex'].match(f):
+                    if self._params['cover_regex'].match(f):
                         return 'file://' + os.path.join(song_dir, f)
 
             # Search the shared cover directories
