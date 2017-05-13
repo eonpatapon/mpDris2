@@ -331,7 +331,7 @@ class MPDWrapper(object):
             self.client._sock.settimeout(5.0)
             # Export our DBUS service
             if not self._dbus_service:
-                self._dbus_service = MPRISInterface(self._params['music_dir'])
+                self._dbus_service = MPRISInterface(self._params)
             else:
                 # Add our service to the session bus
                 #self._dbus_service.add_to_connection(dbus.SessionBus(),
@@ -864,10 +864,11 @@ class MPRISInterface(dbus.service.Object):
     __introspect_interface = "org.freedesktop.DBus.Introspectable"
     __prop_interface = dbus.PROPERTIES_IFACE
 
-    def __init__(self, bus, path=""):
+    def __init__(self, params):
         dbus.service.Object.__init__(self, dbus.SessionBus(),
                                      MPRISInterface.__path)
-        self.path = path
+        self._params = params or {}
+        self.path = self._params.get("music_dir", None)
 
         self._bus = dbus.SessionBus()
         self._uname = self._bus.get_unique_name()
