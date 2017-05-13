@@ -1190,8 +1190,6 @@ Note: Environment variables MPD_HOST and MPD_PORT can be used instead of above
      -d, --debug            Run in debug mode
      -v, --version          mpDris2 version
 
-Default: MPD_HOST: %(host)s, MPD_PORT: %(port)s
-
 Report bugs to https://github.com/eonpatapon/mpDris2/issues""" % params)
 
 if __name__ == '__main__':
@@ -1200,36 +1198,11 @@ if __name__ == '__main__':
     gettext.bindtextdomain('mpDris2', '@datadir@/locale')
     gettext.textdomain('mpDris2')
 
-    config = configparser.SafeConfigParser()
-    config.read(['/etc/mpDris2.conf'] +
-                list(reversed(each_xdg_config('mpDris2/mpDris2.conf'))))
+    log_format = '%(asctime)s %(module)s %(levelname)s: %(message)s'
+    log_level = logging.INFO
+    music_dir = None
 
-    if config.has_option('Connection', 'host'):
-        params['host'] = config.get('Connection', 'host')
-    if config.has_option('Connection', 'port'):
-        params['port'] = config.get('Connection', 'port')
-    if config.has_option('Connection', 'password'):
-        params['password'] = config.get('Connection', 'password')
-
-    if 'MPD_HOST' in os.environ:
-        params['host'] = os.environ['MPD_HOST']
-    if 'MPD_PORT' in os.environ:
-        params['port'] = os.environ['MPD_PORT']
-
-    if config.has_option('Library', 'music_dir'):
-        music_dir = config.get('Library', 'music_dir')
-    elif config.has_option('Connection', 'music_dir'):
-        music_dir = config.get('Connection', 'music_dir')
-    else:
-        music_dir = find_music_dir()
-
-    if config.has_option('Library', 'cover_regex'):
-        params['cover_regex'] = re.compile(config.get('Library', 'cover_regex'), re.I | re.X)
-
-    for bling in ['mmkeys', 'notify']:
-        if config.has_option('Bling', bling):
-            params[bling] = config.getboolean('Bling', bling)
-
+    # Parse command line
     try:
         (opts, args) = getopt.getopt(sys.argv[1:], 'hdvp:', ['help', 'debug', 'version', 'path='])
     except getopt.GetoptError as ex:
@@ -1238,9 +1211,6 @@ if __name__ == '__main__':
         print(file=sys.stderr)
         usage(params)
         sys.exit(2)
-
-    log_format = '%(asctime)s %(module)s %(levelname)s: %(message)s'
-    log_level = logging.INFO
 
     for (opt, arg) in opts:
         if opt in ['-h', '--help']:
@@ -1257,18 +1227,59 @@ if __name__ == '__main__':
             print("mpDris2 version %s" % v)
             sys.exit()
 
-    logging.basicConfig(format=log_format, level=log_level)
-    logger = logging.getLogger('mpDris2')
-
     if len(args) > 2:
         usage(params)
         sys.exit()
 
+    logging.basicConfig(format=log_format, level=log_level)
+    logger = logging.getLogger('mpDris2')
+
+    # Pick up the server address (argv -> environment -> config)
     for arg in args[:2]:
         if arg.isdigit():
             params['port'] = arg
         else:
             params['host'] = arg
+
+    if 'host' not in params:
+        if 'MPD_HOST' in os.environ:
+            params['host'] = os.environ['MPD_HOST']
+
+    if 'port' not in params:
+        if 'MPD_PORT' in os.environ:
+            params['port'] = os.environ['MPD_PORT']
+
+    # Read configuration
+    config = configparser.SafeConfigParser()
+    config.read(['/etc/mpDris2.conf'] +
+                list(reversed(each_xdg_config('mpDris2/mpDris2.conf'))))
+
+    if 'host' not in params:
+        if config.has_option('Connection', 'host'):
+            params['host'] = config.get('Connection', 'host')
+
+    if 'port' not in params:
+        if config.has_option('Connection', 'port'):
+            params['port'] = config.get('Connection', 'port')
+
+    if 'password' not in params:
+        if config.has_option('Connection', 'password'):
+            params['password'] = config.get('Connection', 'password')
+
+    if not music_dir:
+        if config.has_option('Library', 'music_dir'):
+            music_dir = config.get('Library', 'music_dir')
+        elif config.has_option('Connection', 'music_dir'):
+            music_dir = config.get('Connection', 'music_dir')
+        else:
+            music_dir = find_music_dir()
+
+    if config.has_option('Library', 'cover_regex'):
+        params['cover_regex'] = re.compile(config.get('Library', 'cover_regex'), re.I | re.X)
+
+    for bling in ['mmkeys', 'notify']:
+        if config.has_option('Bling', bling):
+            params[bling] = config.getboolean('Bling', bling)
 
     if '@' in params['host']:
         params['password'], params['host'] = params['host'].split('@', 1)
