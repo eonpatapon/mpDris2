@@ -868,7 +868,6 @@ class MPRISInterface(dbus.service.Object):
         dbus.service.Object.__init__(self, dbus.SessionBus(),
                                      MPRISInterface.__path)
         self._params = params or {}
-        self.path = self._params.get("music_dir", None)
 
         self._bus = dbus.SessionBus()
         self._uname = self._bus.get_unique_name()
