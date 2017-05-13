@@ -1257,7 +1257,8 @@ if __name__ == '__main__':
     # Read configuration
     config = configparser.SafeConfigParser()
     if config_file:
-        config.read([config_file])
+        with open(config_file) as fh:
+            config.read_file(fh)
     else:
         config.read(['/etc/mpDris2.conf'] +
                     list(reversed(each_xdg_config('mpDris2/mpDris2.conf'))))
