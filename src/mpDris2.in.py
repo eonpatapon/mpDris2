@@ -1279,7 +1279,11 @@ if __name__ == '__main__':
 
     for p in ['host', 'port', 'password', 'bus_name']:
         if not params[p]:
-            params[p] = config.get('Connection', p, fallback=defaults[p])
+            # TODO: switch to get(fallback=…) when possible
+            if config.has_option('Connection', p):
+                params[p] = config.get('Connection', p)
+            else:
+                params[p] = defaults[p])
 
     if '@' in params['host']:
         params['password'], params['host'] = params['host'].rsplit('@', 1)
@@ -1310,9 +1314,11 @@ if __name__ == '__main__':
         logger.warning('By not supplying a path for the music library '
                        'this program will break the MPRIS specification!')
 
-    params['cover_regex'] = re.compile(config.get('Library', 'cover_regex',
-                                                  fallback=defaults['cover_regex']),
-                                       re.I | re.X)
+    if config.has_option('Library', 'cover_regex'):
+        cover_regex = config.get('Library', 'cover_regex')
+    else:
+        cover_regex = defaults['cover_regex']
+    params['cover_regex'] = re.compile(cover_regex, re.I | re.X)
 
     logger.debug('Parameters: %r' % params)
 
