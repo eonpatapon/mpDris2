@@ -84,8 +84,8 @@ identity = "Music Player Daemon"
 params = {
     'progname': sys.argv[0],
     # Connection
-    'host': 'localhost',
-    'port': 6600,
+    'host': None,
+    'port': None,
     'password': None,
     # Library
     'music_dir': '',
@@ -1246,11 +1246,10 @@ if __name__ == '__main__':
         else:
             params['host'] = arg
 
-    if 'host' not in params:
+    if not params['host']:
         if 'MPD_HOST' in os.environ:
             params['host'] = os.environ['MPD_HOST']
-
-    if 'port' not in params:
+    if not params['port']:
         if 'MPD_PORT' in os.environ:
             params['port'] = os.environ['MPD_PORT']
 
@@ -1263,17 +1262,12 @@ if __name__ == '__main__':
         config.read(['/etc/mpDris2.conf'] +
                     list(reversed(each_xdg_config('mpDris2/mpDris2.conf'))))
 
-    if 'host' not in params:
-        if config.has_option('Connection', 'host'):
-            params['host'] = config.get('Connection', 'host')
-
-    if 'port' not in params:
-        if config.has_option('Connection', 'port'):
-            params['port'] = config.get('Connection', 'port')
-
-    if 'password' not in params:
-        if config.has_option('Connection', 'password'):
-            params['password'] = config.get('Connection', 'password')
+    if not params['host']:
+        params['host'] = config.get('Connection', 'host', fallback='localhost')
+    if not params['port']:
+        params['port'] = config.get('Connection', 'port', fallback=6600)
+    if not params['password']:
+        params['password'] = config.get('Connection', 'password', fallback=None)
 
     if not music_dir:
         if config.has_option('Library', 'music_dir'):
@@ -1306,6 +1300,8 @@ if __name__ == '__main__':
     else:
         logger.warning('By not supplying a path for the music library '
                        'this program will break the MPRIS specification!')
+
+    logger.debug('Parameters: %r' % params)
 
     if mutagen:
         logger.info('Using Mutagen to read covers from music files.')
