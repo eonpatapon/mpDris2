@@ -89,11 +89,19 @@ params = {
     'password': None,
     # Library
     'music_dir': '',
-    'cover_regex': re.compile(r'^(album|cover|\.?folder|front).*\.(gif|jpeg|jpg|png)$',
-                              re.I | re.X),
+    'cover_regex': None,
     # Bling
     'mmkeys': True,
     'notify': (using_gi_notify or using_old_notify),
+}
+
+defaults = {
+    # Connection
+    'host': 'localhost',
+    'port': 6600,
+    'password': None,
+    # Library
+    'cover_regex': r'^(album|cover|\.?folder|front).*\.(gif|jpeg|jpg|png)$',
 }
 
 notification = None
@@ -1262,12 +1270,16 @@ if __name__ == '__main__':
         config.read(['/etc/mpDris2.conf'] +
                     list(reversed(each_xdg_config('mpDris2/mpDris2.conf'))))
 
-    if not params['host']:
-        params['host'] = config.get('Connection', 'host', fallback='localhost')
-    if not params['port']:
-        params['port'] = config.get('Connection', 'port', fallback=6600)
-    if not params['password']:
-        params['password'] = config.get('Connection', 'password', fallback=None)
+    for p in ['host', 'port', 'password']:
+        if not params[p]:
+            params[p] = config.get('Connection', p, fallback=defaults[p])
+
+    if '@' in params['host']:
+        params['password'], params['host'] = params['host'].rsplit('@', 1)
+
+    for p in ['mmkeys', 'notify']:
+        if config.has_option('Bling', p):
+            params[p] = config.getboolean('Bling', p)
 
     if not music_dir:
         if config.has_option('Library', 'music_dir'):
@@ -1276,16 +1288,6 @@ if __name__ == '__main__':
             music_dir = config.get('Connection', 'music_dir')
         else:
             music_dir = find_music_dir()
-
-    if config.has_option('Library', 'cover_regex'):
-        params['cover_regex'] = re.compile(config.get('Library', 'cover_regex'), re.I | re.X)
-
-    for bling in ['mmkeys', 'notify']:
-        if config.has_option('Bling', bling):
-            params[bling] = config.getboolean('Bling', bling)
-
-    if '@' in params['host']:
-        params['password'], params['host'] = params['host'].rsplit('@', 1)
 
     if music_dir:
         # Ensure that music_dir starts with an URL scheme.
@@ -1300,6 +1302,10 @@ if __name__ == '__main__':
     else:
         logger.warning('By not supplying a path for the music library '
                        'this program will break the MPRIS specification!')
+
+    params['cover_regex'] = re.compile(config.get('Library', 'cover_regex',
+                                                  fallback=defaults['cover_regex']),
+                                       re.I | re.X)
 
     logger.debug('Parameters: %r' % params)
 
