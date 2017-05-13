@@ -1291,7 +1291,7 @@ if __name__ == '__main__':
             params[bling] = config.getboolean('Bling', bling)
 
     if '@' in params['host']:
-        params['password'], params['host'] = params['host'].split('@', 1)
+        params['password'], params['host'] = params['host'].rsplit('@', 1)
 
     if music_dir:
         # Ensure that music_dir starts with an URL scheme.
