@@ -87,6 +87,7 @@ params = {
     'host': None,
     'port': None,
     'password': None,
+    'bus_name': None,
     # Library
     'music_dir': '',
     'cover_regex': None,
@@ -100,6 +101,7 @@ defaults = {
     'host': 'localhost',
     'port': 6600,
     'password': None,
+    'bus_name': None,
     # Library
     'cover_regex': r'^(album|cover|\.?folder|front).*\.(gif|jpeg|jpg|png)$',
 }
@@ -859,7 +861,6 @@ class NotifyWrapper(object):
 class MPRISInterface(dbus.service.Object):
     ''' The base object of an MPRIS player '''
 
-    __name = "org.mpris.MediaPlayer2.mpd"
     __path = "/org/mpris/MediaPlayer2"
     __introspect_interface = "org.freedesktop.DBus.Introspectable"
     __prop_interface = dbus.PROPERTIES_IFACE
@@ -868,6 +869,9 @@ class MPRISInterface(dbus.service.Object):
         dbus.service.Object.__init__(self, dbus.SessionBus(),
                                      MPRISInterface.__path)
         self._params = params or {}
+        self._name = self._params.get("bus_name", "org.mpris.MediaPlayer2.mpd")
+        if not self._name.startswith("org.mpris.MediaPlayer2."):
+            logger.warn("Configured bus name %r is outside MPRIS2 namespace" % self._name)
 
         self._bus = dbus.SessionBus()
         self._uname = self._bus.get_unique_name()
@@ -875,12 +879,12 @@ class MPRISInterface(dbus.service.Object):
                                               "/org/freedesktop/DBus")
         self._dbus_obj.connect_to_signal("NameOwnerChanged",
                                          self._name_owner_changed_callback,
-                                         arg0=self.__name)
+                                         arg0=self._name)
 
         self.acquire_name()
 
     def _name_owner_changed_callback(self, name, old_owner, new_owner):
-        if name == self.__name and old_owner == self._uname and new_owner != "":
+        if name == self._name and old_owner == self._uname and new_owner != "":
             try:
                 pid = self._dbus_obj.GetConnectionUnixProcessID(new_owner)
             except:
@@ -889,7 +893,7 @@ class MPRISInterface(dbus.service.Object):
             loop.quit()
 
     def acquire_name(self):
-        self._bus_name = dbus.service.BusName(MPRISInterface.__name,
+        self._bus_name = dbus.service.BusName(self._name,
                                               bus=self._bus,
                                               allow_replacement=True,
                                               replace_existing=True)
@@ -1215,7 +1219,8 @@ if __name__ == '__main__':
     # Parse command line
     try:
         (opts, args) = getopt.getopt(sys.argv[1:], 'hc:dp:v',
-                                     ['help', 'config=', 'debug', 'path=', 'version'])
+                                     ['help', 'bus-name=', 'config=',
+                                      'debug', 'path=', 'version'])
     except getopt.GetoptError as ex:
         (msg, opt) = ex.args
         print("%s: %s" % (sys.argv[0], msg), file=sys.stderr)
@@ -1227,6 +1232,8 @@ if __name__ == '__main__':
         if opt in ['-h', '--help']:
             usage(params)
             sys.exit()
+        elif opt in ['--bus-name']:
+            params['bus_name'] = arg
         elif opt in ['-c', '--config']:
             config_file = arg
         elif opt in ['-d', '--debug']:
@@ -1270,7 +1277,7 @@ if __name__ == '__main__':
         config.read(['/etc/mpDris2.conf'] +
                     list(reversed(each_xdg_config('mpDris2/mpDris2.conf'))))
 
-    for p in ['host', 'port', 'password']:
+    for p in ['host', 'port', 'password', 'bus_name']:
         if not params[p]:
             params[p] = config.get('Connection', p, fallback=defaults[p])
 

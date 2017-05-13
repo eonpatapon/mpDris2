@@ -2,6 +2,11 @@ mpDris2 v0.8 (unreleased)
 
  - "Playing" and "Paused" notifications now show song information (#71).
 
+ - Path to config file can be changed via command line.
+
+ - There is a hidden option to change the D-Bus service name, for advanced
+   multi-instance configurations.
+
 mpDris2 v0.7 (December 18, 2015)
 
  - Now compatible with both pygobject 2.x and 3.x (#62).
