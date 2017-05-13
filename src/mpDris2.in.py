@@ -1193,15 +1193,18 @@ def find_music_dir():
 
 def usage(params):
     print("""\
-Usage: %(progname)s [OPTION]... [MPD_HOST] [MPD_PORT]
-
-Note: Environment variables MPD_HOST and MPD_PORT can be used instead of above
-      arguments.
+Usage: %(progname)s [OPTION]...
 
      -c, --config=PATH      Read a custom configuration file
-     -p, --path=PATH        Set the music library path
+
+     -h, --host=ADDR        Set the mpd server address
+         --port=PORT        Set the TCP port
+         --music-dir=PATH   Set the music library path
+
      -d, --debug            Run in debug mode
      -v, --version          mpDris2 version
+
+Environment variables MPD_HOST and MPD_PORT can be used.
 
 Report bugs to https://github.com/eonpatapon/mpDris2/issues""" % params)
 
@@ -1218,9 +1221,10 @@ if __name__ == '__main__':
 
     # Parse command line
     try:
-        (opts, args) = getopt.getopt(sys.argv[1:], 'hc:dp:v',
+        (opts, args) = getopt.getopt(sys.argv[1:], 'c:dh:p:v',
                                      ['help', 'bus-name=', 'config=',
-                                      'debug', 'path=', 'version'])
+                                      'debug', 'host=', 'music-dir=',
+                                      'path=', 'port=', 'version'])
     except getopt.GetoptError as ex:
         (msg, opt) = ex.args
         print("%s: %s" % (sys.argv[0], msg), file=sys.stderr)
@@ -1229,7 +1233,7 @@ if __name__ == '__main__':
         sys.exit(2)
 
     for (opt, arg) in opts:
-        if opt in ['-h', '--help']:
+        if opt in ['--help']:
             usage(params)
             sys.exit()
         elif opt in ['--bus-name']:
@@ -1238,8 +1242,12 @@ if __name__ == '__main__':
             config_file = arg
         elif opt in ['-d', '--debug']:
             log_level = logging.DEBUG
-        elif opt in ['-p', '--path']:
+        elif opt in ['-h', '--host']:
+            params['host'] = arg
+        elif opt in ['-p', '--path', '--music-dir']:
             music_dir = arg
+        elif opt in ['--port']:
+            params['port'] = int(arg)
         elif opt in ['-v', '--version']:
             v = __version__
             if __git_version__:
