@@ -869,7 +869,7 @@ class MPRISInterface(dbus.service.Object):
         dbus.service.Object.__init__(self, dbus.SessionBus(),
                                      MPRISInterface.__path)
         self._params = params or {}
-        self._name = self._params.get("bus_name", "org.mpris.MediaPlayer2.mpd")
+        self._name = self._params["bus_name"] or "org.mpris.MediaPlayer2.mpd"
         if not self._name.startswith("org.mpris.MediaPlayer2."):
             logger.warn("Configured bus name %r is outside MPRIS2 namespace" % self._name)
 
