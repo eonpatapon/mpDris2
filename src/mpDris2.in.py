@@ -36,6 +36,7 @@ import logging
 import gettext
 import time
 import tempfile
+import base64
 
 __version__ = "@version@"
 __git_version__ = "@gitversion@"
@@ -634,13 +635,36 @@ class MPDWrapper(object):
             # Search for embedded cover art
             if mutagen and os.path.exists(song_path):
                 song = mutagen.File(song_path)
+
                 if 'APIC:' in song.tags:
-                    self._temp_song_url = song_url
-                    self._temp_cover = tempfile.NamedTemporaryFile(prefix='cover-', suffix='.jpg')
-                    self._temp_cover.write(song.tags['APIC:'].data)
-                    self._temp_cover.flush()
-                    logger.debug("find_cover: Storing embedded image at %r" % self._temp_cover.name)
-                    return 'file://' + self._temp_cover.name
+                    # ID3 
+                    for pic in song.tags.getall('APIC:'):
+                        if pic.type == mutagen.id3.PictureType.COVER_FRONT:
+                            self._temp_song_url = song_url
+                            return self._create_temp_cover(pic) 
+                elif hasattr(song, "pictures"):
+                    # FLAC
+                    for pic in song.pictures:
+                        if pic.type == mutagen.id3.PictureType.COVER_FRONT:
+                            self._temp_song_url = song_url
+                            return self._create_temp_cover(pic)
+                elif 'metadata_block_picture' in song.tags:
+                    # OGG
+                    for b64_data in song.get("metadata_block_picture", []):
+                        try:
+                            data = base64.b64decode(b64_data)
+                        except (TypeError, ValueError):
+                            continue
+
+                        try:
+                            pic = mutagen.flac.Picture(data)
+                        except mutagen.flac.error:
+                            continue
+
+                        if pic.type == mutagen.id3.PictureType.COVER_FRONT:
+                            self._temp_song_url = song_url
+                            return self._create_temp_cover(pic)
+
 
             # Look in song directory for common album cover files
             if os.path.exists(song_dir):
@@ -657,6 +681,20 @@ class MPDWrapper(object):
                     if os.path.exists(f):
                         return 'file://' + f
         return None
+
+    def _create_temp_cover(self, pic):
+        """
+        Create a temporary file containing pic, and return it's location
+        """
+        extension = {'image/jpeg': '.jpg',
+                     'image/png': '.png',
+                     'image/gif': '.gif'}
+
+        self._temp_cover = tempfile.NamedTemporaryFile(prefix='cover-', suffix=extension.get(pic.mime, '.jpg'))
+        self._temp_cover.write(pic.data)
+        self._temp_cover.flush()
+        logger.debug("find_cover: Storing embedded image at %r" % self._temp_cover.name)
+        return 'file://' + self._temp_cover.name
 
     def last_status(self):
         if time.time() - self._time >= 2:
