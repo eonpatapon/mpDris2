@@ -638,10 +638,10 @@ class MPDWrapper(object):
 
                 for tag in song.tags:
                     if tag.startswith("APIC:"):
-                        pic = song.tags[tag]
-                        if pic.type == mutagen.id3.PictureType.COVER_FRONT:
-                             self._temp_song_url = song_url
-                             return self._create_temp_cover(pic)
+                        for pic in song.tags.getall(tag):
+                            if pic.type == mutagen.id3.PictureType.COVER_FRONT:
+                                 self._temp_song_url = song_url
+                                 return self._create_temp_cover(pic)
                 if hasattr(song, "pictures"):
                     # FLAC
                     for pic in song.pictures:
