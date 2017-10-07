@@ -636,7 +636,7 @@ class MPDWrapper(object):
             if mutagen and os.path.exists(song_path):
                 song = mutagen.File(song_path)
 
-                for tag in song.tags:
+                for tag in song.tags.keys():
                     if tag.startswith("APIC:"):
                         for pic in song.tags.getall(tag):
                             if pic.type == mutagen.id3.PictureType.COVER_FRONT:
