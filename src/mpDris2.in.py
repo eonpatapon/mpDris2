@@ -794,8 +794,13 @@ class MPDWrapper(object):
 
     def register_mediakeys(self):
         try:
-            gsd_object = self._bus.get_object("org.gnome.SettingsDaemon",
-                                              "/org/gnome/SettingsDaemon/MediaKeys")
+            try:
+                gsd_object = self._bus.get_object("org.gnome.SettingsDaemon.MediaKeys",
+                                                  "/org/gnome/SettingsDaemon/MediaKeys")
+            except:
+                # Try older name.
+                gsd_object = self._bus.get_object("org.gnome.SettingsDaemon",
+                                                  "/org/gnome/SettingsDaemon/MediaKeys")
             gsd_object.GrabMediaPlayerKeys("mpDris2", 0,
                                            dbus_interface="org.gnome.SettingsDaemon.MediaKeys")
         except:
