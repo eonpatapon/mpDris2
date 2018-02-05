@@ -635,20 +635,21 @@ class MPDWrapper(object):
             # Search for embedded cover art
             if mutagen and os.path.exists(song_path):
                 song = mutagen.File(song_path)
-
-                for tag in song.tags.keys():
-                    if tag.startswith("APIC:"):
-                        for pic in song.tags.getall(tag):
-                            if pic.type == mutagen.id3.PictureType.COVER_FRONT:
-                                 self._temp_song_url = song_url
-                                 return self._create_temp_cover(pic)
+                if song.tags:
+                    # present but null for some file types
+                    for tag in song.tags.keys():
+                        if tag.startswith("APIC:"):
+                            for pic in song.tags.getall(tag):
+                                if pic.type == mutagen.id3.PictureType.COVER_FRONT:
+                                     self._temp_song_url = song_url
+                                     return self._create_temp_cover(pic)
                 if hasattr(song, "pictures"):
                     # FLAC
                     for pic in song.pictures:
                         if pic.type == mutagen.id3.PictureType.COVER_FRONT:
                             self._temp_song_url = song_url
                             return self._create_temp_cover(pic)
-                elif 'metadata_block_picture' in song.tags:
+                elif song.tags and 'metadata_block_picture' in song.tags:
                     # OGG
                     for b64_data in song.get("metadata_block_picture", []):
                         try:
