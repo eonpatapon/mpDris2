@@ -898,8 +898,11 @@ class NotifyWrapper(object):
 
     def notify(self, title, body, uri=''):
         if self._notification:
-            self._notification.update(title, body, uri)
-            self._notification.show()
+            try:
+                self._notification.update(title, body, uri)
+                self._notification.show()
+            except Exception as e:
+                logger.warning('Failed to update notification: %s' % e)
 
 
 class MPRISInterface(dbus.service.Object):
