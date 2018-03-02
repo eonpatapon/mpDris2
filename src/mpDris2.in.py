@@ -75,7 +75,7 @@ except ImportError:
     try:
         import pynotify
         using_old_notify = True
-    except:
+    except ImportError:
         pass
 
 _ = gettext.gettext
@@ -885,8 +885,15 @@ class NotifyWrapper(object):
                     self._notification = Notify.Notification()
                     self._notification.set_hint("desktop-entry", GLib.Variant("s", "mpdris2"))
                     self._notification.set_hint("transient", GLib.Variant("b", True))
+                    try:
+                        self._notification.update("mpdris2 %s started" % __version__)
+                        self._notification.show()
+                    except GLib.GError as err:
+                        logger.error("Failed to init libnotify: %s", err)
+                        self._notification = None
                 else:
                     logger.error("Failed to init libnotify; disabling notifications")
+                    self._notification = None
             elif using_old_notify:
                 logger.debug("Initializing old pynotify")
                 if pynotify.init(identity):
@@ -895,14 +902,15 @@ class NotifyWrapper(object):
                     self._notification.set_hint("transient", True)
                 else:
                     logger.error("Failed to init libnotify; disabling notifications")
+                    self._notification = None
 
     def notify(self, title, body, uri=''):
         if self._notification:
             try:
                 self._notification.update(title, body, uri)
                 self._notification.show()
-            except Exception as e:
-                logger.warning('Failed to update notification: %s' % e)
+            except GLib.GError as err:
+                logger.error("Failed to show notification: %s" % err)
 
 
 class MPRISInterface(dbus.service.Object):
