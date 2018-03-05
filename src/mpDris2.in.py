@@ -838,14 +838,23 @@ class MPDWrapper(object):
         def _write_command(self, *args):
             return self.client._writecommand(*args)
 
-    if hasattr(mpd.MPDClient, "_fetch_object"):
-        def _fetch_object(self, *args):
-            return self.client._fetch_object(*args)
+    if hasattr(mpd.MPDClient, "_parse_objects_direct"):
+        def _fetch_object(self):
+            objs = self._fetch_objects()
+            if not objs:
+                return {}
+            return objs[0]
+    elif hasattr(mpd.MPDClient, "_fetch_object"):
+        def _fetch_object(self):
+            return self.client._fetch_object()
     elif hasattr(mpd.MPDClient, "_getobject"):
-        def _fetch_object(self, *args):
-            return self.client._getobject(*args)
+        def _fetch_object(self):
+            return self.client._getobject()
 
-    if hasattr(mpd.MPDClient, "_fetch_objects"):
+    if hasattr(mpd.MPDClient, "_parse_objects_direct"):
+        def _fetch_objects(self, *args):
+            return list(self.client._parse_objects_direct(self.client._read_lines(), *args))
+    elif hasattr(mpd.MPDClient, "_fetch_objects"):
         def _fetch_objects(self, *args):
             return self.client._fetch_objects(*args)
     elif hasattr(mpd.MPDClient, "_getobjects"):
