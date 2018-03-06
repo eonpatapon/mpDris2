@@ -831,6 +831,15 @@ class MPDWrapper(object):
                 raise mpd.ConnectionError("Not connected")
             return self.client._sock.fileno()
 
+    ## Access to python-mpd internal APIs
+
+    # We use _write_command("idle") to manually enter idle mode, as it has no
+    # immediate response to fetch.
+    #
+    # Similarly, we use _write_command("noidle") + _fetch_object() to manually
+    # leave idle mode (for reasons I don't quite remember). The result of
+    # _fetch_object() is not used.
+
     if hasattr(mpd.MPDClient, "_write_command"):
         def _write_command(self, *args):
             return self.client._write_command(*args)
@@ -851,6 +860,9 @@ class MPDWrapper(object):
         def _fetch_object(self):
             return self.client._getobject()
 
+    # We use _fetch_objects("changed") to receive unprompted idle events on
+    # socket activity.
+
     if hasattr(mpd.MPDClient, "_parse_objects_direct"):
         def _fetch_objects(self, *args):
             return list(self.client._parse_objects_direct(self.client._read_lines(), *args))
@@ -861,6 +873,8 @@ class MPDWrapper(object):
         def _fetch_objects(self, *args):
             return self.client._getobjects(*args)
 
+    # Wrapper to catch connection errors when calling mpd client methods.
+
     def __getattr__(self, attr):
         if attr[0] == "_":
             raise AttributeError(attr)
@@ -868,7 +882,6 @@ class MPDWrapper(object):
             return self.call(attr, *a, **kw)
         return fn
 
-    # Catch connection errors when calling mpd client methods
     def call(self, command, *args):
         fn = getattr(self.client, command)
         try:
