@@ -762,8 +762,7 @@ class MPDWrapper(object):
                     self.notify_about_track(new_meta, new_status['state'])
 
         # "mixer" subsystem
-
-        if old_status['volume'] != new_status['volume']:
+        if old_status.get('volume') != new_status.get('volume'):
             self._dbus_service.update_property('org.mpris.MediaPlayer2.Player',
                                                'Volume')
 
@@ -1036,7 +1035,7 @@ class MPRISInterface(dbus.service.Object):
         return dbus.Dictionary(mpd_wrapper.metadata, signature='sv')
 
     def __get_volume():
-        vol = float(mpd_wrapper.last_status()['volume'])
+        vol = float(mpd_wrapper.last_status().get('volume', 0))
         if vol > 0:
             return vol / 100.0
         else:
