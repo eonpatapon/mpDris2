@@ -575,7 +575,11 @@ class MPDWrapper(object):
             if not any([song_url.startswith(prefix) for prefix in urlhandlers]):
                 song_url = os.path.join(self._params['music_dir'], song_url)
             self._metadata['xesam:url'] = song_url
-            cover = self.find_cover(song_url)
+            try:
+                cover = self.find_cover(song_url)
+            except mutagen.MutagenError as e:
+                logger.error("Can't extract covers from %r: %r" % (song_url, e))
+                cover = None
             if cover:
                 self._metadata['mpris:artUrl'] = cover
 
