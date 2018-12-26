@@ -1378,13 +1378,13 @@ if __name__ == '__main__':
     if '@' in params['host']:
         params['password'], params['host'] = params['host'].rsplit('@', 1)
 
-    for p in ['mmkeys', 'notify', 'notify_urgency']:
+    for p in ['mmkeys', 'notify']:
         if config.has_option('Bling', p):
-            if not p == 'notify_urgency':
                 params[p] = config.getboolean('Bling', p)
-            else:
-                params[p] = int(config.get('Bling', p))
 
+    if config.has_option('Bling', 'notify_urgency'):
+        params[p] = int(config.get('Bling', p))
+                
     if not music_dir:
         if config.has_option('Library', 'music_dir'):
             music_dir = config.get('Library', 'music_dir')
