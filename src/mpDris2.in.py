@@ -95,7 +95,7 @@ params = {
     # Bling
     'mmkeys': True,
     'notify': (using_gi_notify or using_old_notify),
-    'notify-urgency': 0,
+    'notify_urgency': 0,
 }
 
 defaults = {
