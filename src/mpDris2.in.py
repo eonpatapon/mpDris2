@@ -1380,7 +1380,7 @@ if __name__ == '__main__':
 
     for p in ['mmkeys', 'notify']:
         if config.has_option('Bling', p):
-                params[p] = config.getboolean('Bling', p)
+            params[p] = config.getboolean('Bling', p)
 
     if config.has_option('Bling', 'notify_urgency'):
         params[p] = int(config.get('Bling', p))
