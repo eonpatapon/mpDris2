@@ -933,7 +933,7 @@ class NotifyWrapper(object):
     def notify(self, title, body, uri=''):
         if self._notification:
             try:
-                self._notification.set_urgency(int(params['notify_urgency']))
+                self._notification.set_urgency(params['notify_urgency'])
                 self._notification.update(title, body, uri)
                 self._notification.show()
             except GLib.GError as err:
@@ -1383,9 +1383,7 @@ if __name__ == '__main__':
             if not p == 'notify_urgency':
                 params[p] = config.getboolean('Bling', p)
             else:
-                params[p] = config.get('Bling', p)
-            
-    if config.has_option()
+                params[p] = int(config.get('Bling', p))
 
     if not music_dir:
         if config.has_option('Library', 'music_dir'):
