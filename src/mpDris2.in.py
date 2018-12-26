@@ -95,6 +95,7 @@ params = {
     # Bling
     'mmkeys': True,
     'notify': (using_gi_notify or using_old_notify),
+    'notify_urgency': 0,
 }
 
 defaults = {
@@ -932,6 +933,7 @@ class NotifyWrapper(object):
     def notify(self, title, body, uri=''):
         if self._notification:
             try:
+                self._notification.set_urgency(params['notify_urgency'])
                 self._notification.update(title, body, uri)
                 self._notification.show()
             except GLib.GError as err:
@@ -1379,6 +1381,9 @@ if __name__ == '__main__':
     for p in ['mmkeys', 'notify']:
         if config.has_option('Bling', p):
             params[p] = config.getboolean('Bling', p)
+
+    if config.has_option('Bling', 'notify_urgency'):
+        params[p] = int(config.get('Bling', p))
 
     if not music_dir:
         if config.has_option('Library', 'music_dir'):
