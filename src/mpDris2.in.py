@@ -95,6 +95,7 @@ params = {
     # Bling
     'mmkeys': True,
     'notify': (using_gi_notify or using_old_notify),
+    'notify_startup': True,
     'notify_urgency': 0,
 }
 
@@ -911,12 +912,13 @@ class NotifyWrapper(object):
                     self._notification = Notify.Notification()
                     self._notification.set_hint("desktop-entry", GLib.Variant("s", "mpdris2"))
                     self._notification.set_hint("transient", GLib.Variant("b", True))
-                    try:
-                        self._notification.update("mpdris2 %s started" % __version__)
-                        self._notification.show()
-                    except GLib.GError as err:
-                        logger.error("Failed to init libnotify: %s", err)
-                        self._notification = None
+                    if params["notify_startup"]:
+                        try:
+                            self._notification.update("mpdris2 %s started" % __version__)
+                            self._notification.show()
+                        except GLib.GError as err:
+                            logger.error("Failed to init libnotify: %s", err)
+                            self._notification = None
                 else:
                     logger.error("Failed to init libnotify; disabling notifications")
                     self._notification = None
@@ -1378,7 +1380,7 @@ if __name__ == '__main__':
     if '@' in params['host']:
         params['password'], params['host'] = params['host'].rsplit('@', 1)
 
-    for p in ['mmkeys', 'notify']:
+    for p in ['mmkeys', 'notify', 'notify_startup']:
         if config.has_option('Bling', p):
             params[p] = config.getboolean('Bling', p)
 
