@@ -900,35 +900,40 @@ class MPDWrapper(object):
             self.reconnect()
             return False
 
+
 class NotifyWrapper(object):
+
     def __init__(self, params):
         self._notification = None
 
-        if params["notify"]:
-            if using_gi_notify:
-                logger.debug("Initializing GObject.Notify")
-                if Notify.init(identity):
-                    self._notification = Notify.Notification()
-                    self._notification.set_hint("desktop-entry", GLib.Variant("s", "mpdris2"))
-                    self._notification.set_hint("transient", GLib.Variant("b", True))
-                    try:
-                        self._notification.update("mpdris2 %s started" % __version__)
-                        self._notification.show()
-                    except GLib.GError as err:
-                        logger.error("Failed to init libnotify: %s", err)
-                        self._notification = None
-                else:
-                    logger.error("Failed to init libnotify; disabling notifications")
-                    self._notification = None
-            elif using_old_notify:
-                logger.debug("Initializing old pynotify")
-                if pynotify.init(identity):
-                    self._notification = pynotify.Notification("", "", "")
-                    self._notification.set_hint("desktop-entry", "mpdris2")
-                    self._notification.set_hint("transient", True)
-                else:
-                    logger.error("Failed to init libnotify; disabling notifications")
-                    self._notification = None
+        if not params["notify"]:
+            return
+
+        bus = dbus.SessionBus()
+        try:
+            bus.get_name_owner("org.freedesktop.Notifications")
+        except dbus.exceptions.DBusException:
+            logger.error("No service handling org.freedesktop.Notifications; disabling notifications")
+            return
+
+        if using_gi_notify:
+            logger.debug("Initializing GObject.Notify")
+            if Notify.init(identity):
+                self._notification = Notify.Notification()
+                self._notification.set_hint("desktop-entry", GLib.Variant("s", "mpdris2"))
+                self._notification.set_hint("transient", GLib.Variant("b", True))
+            else:
+                logger.error("Failed to init libnotify; disabling notifications")
+                self._notification = None
+        elif using_old_notify:
+            logger.debug("Initializing old pynotify")
+            if pynotify.init(identity):
+                self._notification = pynotify.Notification("", "", "")
+                self._notification.set_hint("desktop-entry", "mpdris2")
+                self._notification.set_hint("transient", True)
+            else:
+                logger.error("Failed to init libnotify; disabling notifications")
+                self._notification = None
 
     def notify(self, title, body, uri=''):
         if self._notification:
