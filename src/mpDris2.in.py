@@ -1388,7 +1388,7 @@ if __name__ == '__main__':
             params[p] = config.getboolean('Bling', p)
 
     if config.has_option('Bling', 'notify_urgency'):
-        params[p] = int(config.get('Bling', p))
+        params['notify_urgency'] = int(config.get('Bling', 'notify_urgency'))
 
     if not music_dir:
         if config.has_option('Library', 'music_dir'):
