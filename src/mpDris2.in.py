@@ -47,9 +47,9 @@ except ImportError:
     mutagen = None
 
 try:
-    import configparser
+    from configparser import ConfigParser
 except ImportError:
-    import ConfigParser as configparser
+    from ConfigParser import SafeConfigParser as ConfigParser
 
 try:
     import gi
@@ -1364,7 +1364,7 @@ if __name__ == '__main__':
             params['port'] = os.environ['MPD_PORT']
 
     # Read configuration
-    config = configparser.SafeConfigParser()
+    config = ConfigParser()
     if config_file:
         with open(config_file) as fh:
             config.read(config_file)
