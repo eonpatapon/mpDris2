@@ -905,37 +905,54 @@ class NotifyWrapper(object):
 
     def __init__(self, params):
         self._notification = None
+        self._enabled = True
 
-        if not params["notify"]:
-            return
+        if params["notify"]:
+            self._notification = self._bootstrap_notifications()
+        else:
+            self._enabled = False
 
+    def _bootstrap_notifications(self):
+        # Check if someone is providing the notification service
         bus = dbus.SessionBus()
         try:
             bus.get_name_owner("org.freedesktop.Notifications")
         except dbus.exceptions.DBusException:
             logger.error("No service handling org.freedesktop.Notifications; disabling notifications")
-            return
+            return None
 
+        notif = None
+
+        # Bootstrap whatever notifications system we are using
         if using_gi_notify:
             logger.debug("Initializing GObject.Notify")
             if Notify.init(identity):
-                self._notification = Notify.Notification()
-                self._notification.set_hint("desktop-entry", GLib.Variant("s", "mpdris2"))
-                self._notification.set_hint("transient", GLib.Variant("b", True))
+                notif = Notify.Notification()
+                notif.set_hint("desktop-entry", GLib.Variant("s", "mpdris2"))
+                notif.set_hint("transient", GLib.Variant("b", True))
             else:
                 logger.error("Failed to init libnotify; disabling notifications")
-                self._notification = None
         elif using_old_notify:
             logger.debug("Initializing old pynotify")
             if pynotify.init(identity):
-                self._notification = pynotify.Notification("", "", "")
-                self._notification.set_hint("desktop-entry", "mpdris2")
-                self._notification.set_hint("transient", True)
+                notif = pynotify.Notification("", "", "")
+                notif.set_hint("desktop-entry", "mpdris2")
+                notif.set_hint("transient", True)
             else:
                 logger.error("Failed to init libnotify; disabling notifications")
-                self._notification = None
+
+        return notif
 
     def notify(self, title, body, uri=''):
+        if not self._enabled:
+            return
+        
+        # If we did not yet manage to get a notification service,
+        # try again
+        if not self._notification:
+            logger.info('Retrying to acquire a notification service provider...')
+            self._notification = self._bootstrap_notifications()
+        
         if self._notification:
             try:
                 self._notification.set_urgency(params['notify_urgency'])
