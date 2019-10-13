@@ -909,6 +909,8 @@ class NotifyWrapper(object):
 
         if params["notify"]:
             self._notification = self._bootstrap_notifications()
+            if not self._notification:
+                logger.error("No notification service provider could be found; disabling notifications")
         else:
             self._enabled = False
 
@@ -918,7 +920,6 @@ class NotifyWrapper(object):
         try:
             bus.get_name_owner("org.freedesktop.Notifications")
         except dbus.exceptions.DBusException:
-            logger.error("No service handling org.freedesktop.Notifications; disabling notifications")
             return None
 
         notif = None
@@ -952,6 +953,8 @@ class NotifyWrapper(object):
         if not self._notification:
             logger.info('Retrying to acquire a notification service provider...')
             self._notification = self._bootstrap_notifications()
+            if self._notification:
+                logger.info('Notification service provider acquired!')
         
         if self._notification:
             try:
