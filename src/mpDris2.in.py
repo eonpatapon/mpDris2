@@ -1309,6 +1309,7 @@ Usage: %(progname)s [OPTION]...
          --music-dir=PATH   Set the music library path
 
      -d, --debug            Run in debug mode
+     -n, --no-timestamps    Omit timestamps from log output
      -v, --version          mpDris2 version
 
 Environment variables MPD_HOST and MPD_PORT can be used.
@@ -1321,17 +1322,20 @@ if __name__ == '__main__':
     gettext.bindtextdomain('mpDris2', '@datadir@/locale')
     gettext.textdomain('mpDris2')
 
-    log_format = '%(asctime)s %(module)s %(levelname)s: %(message)s'
+    log_format_no_timestamps = '%(module)s %(levelname)s: %(message)s'
+    log_format = '%(asctime)s ' + log_format_no_timestamps
+
     log_level = logging.INFO
     config_file = None
     music_dir = None
 
     # Parse command line
     try:
-        (opts, args) = getopt.getopt(sys.argv[1:], 'c:dh:p:v',
+        (opts, args) = getopt.getopt(sys.argv[1:], 'c:dh:np:v',
                                      ['help', 'bus-name=', 'config=',
                                       'debug', 'host=', 'music-dir=',
-                                      'path=', 'port=', 'version'])
+                                      'no-timestamps', 'path=', 'port=',
+                                      'version'])
     except getopt.GetoptError as ex:
         (msg, opt) = ex.args
         print("%s: %s" % (sys.argv[0], msg), file=sys.stderr)
@@ -1351,6 +1355,8 @@ if __name__ == '__main__':
             log_level = logging.DEBUG
         elif opt in ['-h', '--host']:
             params['host'] = arg
+        elif opt in ['-n', '--no-timestamps']:
+            log_format = log_format_no_timestamps
         elif opt in ['-p', '--path', '--music-dir']:
             music_dir = arg
         elif opt in ['--port']:
