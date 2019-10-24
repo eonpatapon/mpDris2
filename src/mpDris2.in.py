@@ -1309,7 +1309,7 @@ Usage: %(progname)s [OPTION]...
          --music-dir=PATH   Set the music library path
 
      -d, --debug            Run in debug mode
-     -n, --no-timestamps    Omit timestamps from log output
+     -j, --use-journal      Log to systemd journal instead of stderr
      -v, --version          mpDris2 version
 
 Environment variables MPD_HOST and MPD_PORT can be used.
@@ -1322,19 +1322,19 @@ if __name__ == '__main__':
     gettext.bindtextdomain('mpDris2', '@datadir@/locale')
     gettext.textdomain('mpDris2')
 
-    log_format_no_timestamps = '%(module)s %(levelname)s: %(message)s'
-    log_format = '%(asctime)s ' + log_format_no_timestamps
+    log_format_stderr = '%(asctime)s %(module)s %(levelname)s: %(message)s'
 
+    log_journal = False
     log_level = logging.INFO
     config_file = None
     music_dir = None
 
     # Parse command line
     try:
-        (opts, args) = getopt.getopt(sys.argv[1:], 'c:dh:np:v',
+        (opts, args) = getopt.getopt(sys.argv[1:], 'c:dh:jp:v',
                                      ['help', 'bus-name=', 'config=',
                                       'debug', 'host=', 'music-dir=',
-                                      'no-timestamps', 'path=', 'port=',
+                                      'use-journal', 'path=', 'port=',
                                       'version'])
     except getopt.GetoptError as ex:
         (msg, opt) = ex.args
@@ -1355,8 +1355,8 @@ if __name__ == '__main__':
             log_level = logging.DEBUG
         elif opt in ['-h', '--host']:
             params['host'] = arg
-        elif opt in ['-n', '--no-timestamps']:
-            log_format = log_format_no_timestamps
+        elif opt in ['-j', '--use-journal']:
+            log_journal = True
         elif opt in ['-p', '--path', '--music-dir']:
             music_dir = arg
         elif opt in ['--port']:
@@ -1372,8 +1372,24 @@ if __name__ == '__main__':
         usage(params)
         sys.exit()
 
-    logging.basicConfig(format=log_format, level=log_level)
     logger = logging.getLogger('mpDris2')
+    logger.propagate = False
+    logger.setLevel(log_level)
+
+    # Attempt to configure systemd journal logging, if enabled
+    if log_journal:
+        try:
+            from systemd.journal import JournalHandler
+            log_handler = JournalHandler(SYSLOG_IDENTIFIER='mpDris2')
+        except ImportError:
+            log_journal = False
+
+    # Log to stderr if journal logging was not enabled, or if setup failed
+    if not log_journal:
+        log_handler = logging.StreamHandler()
+        log_handler.setFormatter(logging.Formatter(log_format_stderr))
+
+    logger.addHandler(log_handler)
 
     # Pick up the server address (argv -> environment -> config)
     for arg in args[:2]:
