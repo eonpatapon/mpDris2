@@ -882,9 +882,7 @@ class MPDWrapper(object):
     def __getattr__(self, attr):
         if attr[0] == "_":
             raise AttributeError(attr)
-        def fn(*a, **kw):
-            return self.call(attr, *a, **kw)
-        return fn
+        return lambda *a, **kw: self.call(attr, *a, **kw)
 
     def call(self, command, *args):
         fn = getattr(self.client, command)
