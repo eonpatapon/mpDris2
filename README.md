@@ -1,7 +1,5 @@
 # mpDris2
 
-[![Join the chat at https://gitter.im/eonpatapon/mpDris2](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/eonpatapon/mpDris2?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-
 mpDris2 provide MPRIS 2 support to mpd (Music Player Daemon).
 
 mpDris2 is run in the user session and monitors a local or distant mpd server.
@@ -10,14 +8,12 @@ mpDris2 is run in the user session and monitors a local or distant mpd server.
 
 ## Stable release
 
-Download the latest release at http://mpdris2.patapon.info/latest/
+Download the latest release at https://github.com/eonpatapon/mpDris2/releases
 
     tar zvxf mpDris2-X.X.tar.gz
     cd mpDris2-X.X
     ./autogen.sh --sysconfdir=/etc
     make install (as root)
-
-Older releases can be found at http://mpdris2.patapon.info/
 
 ## From git
 
