@@ -639,7 +639,7 @@ class MPDWrapper(object):
                 try:
                     song = mutagen.File(song_path)
                 except mutagen.MutagenError as e:
-                    logger.error("Can't extract covers from %r: %r" % (song_url, e))
+                    logger.error("Can't extract covers from %r: %r" % (song_path, e))
             if song is not None:
                 if song.tags:
                     # present but null for some file types
