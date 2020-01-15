@@ -576,11 +576,7 @@ class MPDWrapper(object):
             if not any([song_url.startswith(prefix) for prefix in urlhandlers]):
                 song_url = os.path.join(self._params['music_dir'], song_url)
             self._metadata['xesam:url'] = song_url
-            try:
-                cover = self.find_cover(song_url)
-            except mutagen.MutagenError as e:
-                logger.error("Can't extract covers from %r: %r" % (song_url, e))
-                cover = None
+            cover = self.find_cover(song_url)
             if cover:
                 self._metadata['mpris:artUrl'] = cover
 
@@ -638,8 +634,13 @@ class MPDWrapper(object):
                     self._temp_cover.close()
 
             # Search for embedded cover art
+            song = None
             if mutagen and os.path.exists(song_path):
-                song = mutagen.File(song_path)
+                try:
+                    song = mutagen.File(song_path)
+                except mutagen.MutagenError as e:
+                    logger.error("Can't extract covers from %r: %r" % (song_url, e))
+            if song is not None:
                 if song.tags:
                     # present but null for some file types
                     for tag in song.tags.keys():
@@ -670,7 +671,6 @@ class MPDWrapper(object):
                         if pic.type == mutagen.id3.PictureType.COVER_FRONT:
                             self._temp_song_url = song_url
                             return self._create_temp_cover(pic)
-
 
             # Look in song directory for common album cover files
             if os.path.exists(song_dir):
