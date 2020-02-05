@@ -714,13 +714,14 @@ class MPDWrapper(object):
         self._currentsong = self.currentsong()
         new_status = self.status()
         self._time = new_time = int(time.time())
-        logger.debug("_update_properties: current song = %r" % self._currentsong)
-        logger.debug("_update_properties: current status = %r" % self._status)
 
         if not new_status:
+            logger.debug("_update_properties: failed to get new status")
             return
 
         self._status = new_status
+        logger.debug("_update_properties: current song = %r" % self._currentsong)
+        logger.debug("_update_properties: current status = %r" % self._status)
 
         if 'elapsed' in new_status:
             new_position = float(new_status['elapsed'])
