@@ -1426,6 +1426,8 @@ if __name__ == '__main__':
     if '@' in params['host']:
         params['password'], params['host'] = params['host'].rsplit('@', 1)
 
+    params['host'] = os.path.expanduser(params['host'])
+
     for p in ['mmkeys', 'notify']:
         if config.has_option('Bling', p):
             params[p] = config.getboolean('Bling', p)
@@ -1446,6 +1448,7 @@ if __name__ == '__main__':
         if not re.match('^[0-9A-Za-z+.-]+://', music_dir):
             music_dir = 'file://' + music_dir
         if music_dir.startswith('file://'):
+            music_dir = music_dir[:7] + os.path.expanduser(music_dir[7:])
             if not os.path.exists(music_dir[7:]):
                 logger.error('Music library path %s does not exist!' % music_dir)
         # Non-local URLs can still be useful to MPRIS clients, so accept them.
