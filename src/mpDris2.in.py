@@ -78,6 +78,12 @@ except ImportError:
     except ImportError:
         pass
 
+try:
+    import urllib
+    import io
+except ImportError:
+    urllib = None
+
 _ = gettext.gettext
 
 identity = "Music Player Daemon"
@@ -619,73 +625,135 @@ class MPDWrapper(object):
             self.notify_about_track(self.metadata, state)
 
     def find_cover(self, song_url):
+        logger.debug("find_cover: Looking for %r" % song_url)
+
         if song_url.startswith('file://'):
             song_path = song_url[7:]
             song_dir = os.path.dirname(song_path)
 
-            # Try existing temporary file
-            if self._temp_cover:
-                if song_url == self._temp_song_url:
-                    logger.debug("find_cover: Reusing old image at %r" % self._temp_cover.name)
-                    return 'file://' + self._temp_cover.name
-                else:
-                    logger.debug("find_cover: Cleaning up old image at %r" % self._temp_cover.name)
-                    self._temp_song_url = None
-                    self._temp_cover.close()
+        else:
+            import urllib
+            import urllib.parse
+            import urllib.request
 
-            # Search for embedded cover art
-            song = None
-            if mutagen and os.path.exists(song_path):
+            uri = urllib.parse.urlparse(song_url)
+            song_path = uri.path
+            song_dir = os.path.dirname(song_path)
+
+        # Try existing temporary file
+        if self._temp_cover:
+            if song_url == self._temp_song_url:
+                logger.debug("find_cover: Reusing old image at %r" % self._temp_cover.name)
+                return 'file://' + self._temp_cover.name
+            else:
+                logger.debug("find_cover: Cleaning up old image at %r" % self._temp_cover.name)
+                self._temp_song_url = None
+                self._temp_cover.close()
+
+        # Search for embedded cover art
+        song = None
+        if mutagen:
+            # Check if we can find it locally
+            if os.path.exists(song_path):
                 try:
                     song = mutagen.File(song_path)
                 except mutagen.MutagenError as e:
-                    logger.error("Can't extract covers from %r: %r" % (song_path, e))
-            if song is not None:
-                if song.tags:
-                    # present but null for some file types
-                    for tag in song.tags.keys():
-                        if tag.startswith("APIC:"):
-                            for pic in song.tags.getall(tag):
-                                if pic.type == mutagen.id3.PictureType.COVER_FRONT:
-                                     self._temp_song_url = song_url
-                                     return self._create_temp_cover(pic)
-                if hasattr(song, "pictures"):
-                    # FLAC
-                    for pic in song.pictures:
-                        if pic.type == mutagen.id3.PictureType.COVER_FRONT:
-                            self._temp_song_url = song_url
-                            return self._create_temp_cover(pic)
-                elif song.tags and 'metadata_block_picture' in song.tags:
-                    # OGG
-                    for b64_data in song.get("metadata_block_picture", []):
-                        try:
-                            data = base64.b64decode(b64_data)
-                        except (TypeError, ValueError):
-                            continue
+                    logger.error("find_cover: Can't extract covers from %r: %r" % (song_path, e))
+
+            # Let's see whether this can be found somewhere else
+            elif urllib: # TODO: make this self._params['allow_remote_cover']:
+
+                try:
+                    r = None
+                    safe_uri = uri._replace(path = urllib.parse.quote(uri.path, safe='/'))
+                    safe_uri = urllib.parse.urlunparse(safe_uri)
+                    logger.debug("find_cover: Trying %r for Cover Download" % (safe_uri) )
+                    r = urllib.request.urlopen(safe_uri)
+                    
+                    size = 128
+                    filelike = io.BytesIO()
+                    while 1:
+                        data = r.read(size)
+                        size *= 2
+                        filelike.seek(0, 2) # seek to eof
+                        filelike.write(data)
+                        filelike.seek(0) # seek to start
 
                         try:
-                            pic = mutagen.flac.Picture(data)
-                        except mutagen.flac.error:
-                            continue
+                            song = mutagen.File(filelike)
+                            logger.debug("find_cover: File downloaded successfully")
+                            break
+                        except mutagen.MutagenError:
+                            if not data:
+                                logger.error("find_cover: Cannot download from %r" % (safe_uri))
+                                raise
+                            if size > 5e6: # TODO: make this self._params['cover_download_limit']
+                                # Downloaded more than 5MB
+                                logger.error("find_cover: Over cover_download_limit: %r bytes for cover at %r" % (size, safe_uri))
+                                raise
+                          
+                            pass
+                except (mutagen.MutagenError, EnvironmentError) as e:
+                    logger.error("Can't download file from %r: %r" % (safe_uri, e))
+                    pass
+                finally:
+                    if r:
+                        r.close()
 
-                        if pic.type == mutagen.id3.PictureType.COVER_FRONT:
+        # Try to extract from (local/remote) file
+        if song is not None:
+            if song.tags:
+                # present but null for some file types
+                for tag in song.tags.keys():
+                    if tag.startswith("covr"):
+                        for pic in song.tags.getall(tag):
                             self._temp_song_url = song_url
                             return self._create_temp_cover(pic)
+                    if tag.startswith("APIC:"):
+                        for pic in song.tags.getall(tag):
+                            if pic.type == mutagen.id3.PictureType.COVER_FRONT:
+                                self._temp_song_url = song_url
+                                return self._create_temp_cover(pic)
+            if hasattr(song, "pictures"):
+                # FLAC
+                for pic in song.pictures:
+                    if pic.type == mutagen.id3.PictureType.COVER_FRONT:
+                        self._temp_song_url = song_url
+                        return self._create_temp_cover(pic)
+            elif song.tags and 'metadata_block_picture' in song.tags:
+                # OGG
+                for b64_data in song.get("metadata_block_picture", []):
+                    try:
+                        data = base64.b64decode(b64_data)
+                    except (TypeError, ValueError):
+                        continue
 
-            # Look in song directory for common album cover files
+                    try:
+                        pic = mutagen.flac.Picture(data)
+                    except mutagen.flac.error:
+                        continue
+
+                    if pic.type == mutagen.id3.PictureType.COVER_FRONT:
+                        self._temp_song_url = song_url
+                        return self._create_temp_cover(pic)
+
+        # Look in song directory for common album cover files
+        if uri.scheme == "file":
             if os.path.exists(song_dir):
                 for f in os.listdir(song_dir):
                     if self._params['cover_regex'].match(f):
+                        logger.debug("find_cover: Regex found image at %r" % os.path.join(song_dir, f))
                         return 'file://' + os.path.join(song_dir, f)
 
-            # Search the shared cover directories
-            if 'xesam:artist' in self._metadata and 'xesam:album' in self._metadata:
-                artist = ",".join(self._metadata['xesam:artist'])
-                album = self._metadata['xesam:album']
-                for template in downloaded_covers:
-                    f = os.path.expanduser(template % (artist, album))
-                    if os.path.exists(f):
-                        return 'file://' + f
+        # Search the shared cover directories
+        if 'xesam:artist' in self._metadata and 'xesam:album' in self._metadata:
+            artist = ",".join(self._metadata['xesam:artist'])
+            album = self._metadata['xesam:album']
+            for template in downloaded_covers:
+                f = os.path.expanduser(template % (artist, album))
+                if os.path.exists(f):
+                    return 'file://' + f
+
         return None
 
     def _create_temp_cover(self, pic):
