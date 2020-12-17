@@ -20,8 +20,7 @@
 # Some bits taken from quodlibet mpris plugin by <christoph.reiter@gmx.at>
 
 
-from __future__ import print_function
-
+from configparser import ConfigParser
 import os
 import sys
 import re
@@ -45,11 +44,6 @@ try:
     import mutagen
 except ImportError:
     mutagen = None
-
-try:
-    from configparser import ConfigParser
-except ImportError:
-    from ConfigParser import SafeConfigParser as ConfigParser
 
 try:
     import gi
