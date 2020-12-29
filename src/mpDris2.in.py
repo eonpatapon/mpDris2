@@ -667,7 +667,7 @@ class MPDWrapper(object):
                             return self._create_temp_cover(pic)
 
             # Look in song directory for common album cover files
-            if os.path.exists(song_dir):
+            if os.path.exists(song_dir) and os.path.isdir(song_dir):
                 for f in os.listdir(song_dir):
                     if self._params['cover_regex'].match(f):
                         return 'file://' + os.path.join(song_dir, f)
