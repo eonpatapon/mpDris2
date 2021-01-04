@@ -1386,19 +1386,12 @@ if __name__ == '__main__':
 
     logger.addHandler(log_handler)
 
-    # Pick up the server address (argv -> environment -> config)
+    # Pick up the server address (argv -> config -> environment)
     for arg in args[:2]:
         if arg.isdigit():
             params['port'] = arg
         else:
             params['host'] = arg
-
-    if not params['host']:
-        if 'MPD_HOST' in os.environ:
-            params['host'] = os.environ['MPD_HOST']
-    if not params['port']:
-        if 'MPD_PORT' in os.environ:
-            params['port'] = os.environ['MPD_PORT']
 
     # Read configuration
     config = ConfigParser()
@@ -1417,8 +1410,20 @@ if __name__ == '__main__':
             else:
                 params[p] = defaults[p]
 
+    # Use environment variables as a last-ditch fallback
+    if not params['host']:
+        if 'MPD_HOST' in os.environ:
+            params['host'] = os.environ['MPD_HOST']
+    if not params['port']:
+        if 'MPD_PORT' in os.environ:
+            params['port'] = os.environ['MPD_PORT']
+
     if '@' in params['host']:
-        params['password'], params['host'] = params['host'].rsplit('@', 1)
+        host_password, params['host'] = params['host'].rsplit('@', 1)
+        if 'password' in params:
+            log.warning(
+                "'password@host' setting clobbered explicit password")
+        params['password'] = host_password
 
     params['host'] = os.path.expanduser(params['host'])
 
