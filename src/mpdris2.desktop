@@ -9,3 +9,5 @@ Categories=Audio;Music;Player;AudioVideo;
 NoDisplay=true
 X-DBUS-ServiceName=org.mpris.MediaPlayer2.mpd
 X-GNOME-UsesNotifications=true
+X-systemd-skip=true
+X-GNOME-HiddenUnderSystemd=true
