@@ -3,7 +3,7 @@ Description=mpDris2 - Music Player Daemon D-Bus bridge
 
 [Service]
 Restart=on-failure
-ExecStart=@bindir@/mpDris2
+ExecStart=@bindir@/mpDris2 --use-journal
 BusName=org.mpris.MediaPlayer2.mpd
 
 [Install]
