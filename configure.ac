@@ -1,5 +1,5 @@
 AC_INIT([mpDris2],
-	[0.8],
+	[0.9],
 	[https://github.com/eonpatapon/mpDris2/issues],
 	[mpdris2],
 	[https://github.com/eonpatapon/mpDris2])

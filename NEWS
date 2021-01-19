@@ -1,3 +1,13 @@
+mpDris2 v0.9 (January 19, 2021)
+
+ - Bug fixes
+
+ - Drop python2 support
+
+ - Support `~` expansion in configuration file
+
+ - Added -j option to use systemd journald
+
 mpDris2 v0.8 (February 22, 2019)
 
  - Added cli options for mpd host and port, music dir
