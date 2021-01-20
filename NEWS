@@ -1,3 +1,7 @@
+mpDris2 v0.9.1 (January 20, 2021)
+
+ - Use journald when using systemd service
+
 mpDris2 v0.9 (January 19, 2021)
 
  - Bug fixes
