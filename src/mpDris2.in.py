@@ -584,9 +584,12 @@ class MPDWrapper(object):
                              (value, allowed_tags[key]))
 
     def notify_about_track(self, meta, state='play'):
-        uri = 'sound'
+        uri = 'media-playback-start-symbolic'
+        artUrl = ''
         if 'mpris:artUrl' in meta:
-            uri = meta['mpris:artUrl']
+            artUrl = meta['mpris:artUrl']
+        else:
+            pass
 
         title = 'Unknown Title'
         if 'xesam:title' in meta:
@@ -602,9 +605,8 @@ class MPDWrapper(object):
 
         if state == 'pause':
             uri = 'media-playback-pause-symbolic'
-            body += ' (%s)' % _('Paused')
 
-        notification.notify(title, body, uri)
+        notification.notify(title, body, uri, artUrl)
 
     def notify_about_state(self, state):
         if state == 'stop':
@@ -939,10 +941,10 @@ class NotifyWrapper(object):
 
         return notif
 
-    def notify(self, title, body, uri=''):
+    def notify(self, title, body, uri='', artUrl=''):
         if not self._enabled:
             return
-        
+
         # If we did not yet manage to get a notification service,
         # try again
         if not self._notification:
@@ -950,11 +952,13 @@ class NotifyWrapper(object):
             self._notification = self._bootstrap_notifications()
             if self._notification:
                 logger.info('Notification service provider acquired!')
-        
+
         if self._notification:
             try:
+                self._notification.close()
                 self._notification.set_urgency(params['notify_urgency'])
                 self._notification.update(title, body, uri)
+                self._notification.set_hint('image-path', GLib.Variant("s", artUrl))
                 self._notification.show()
             except GLib.GError as err:
                 logger.error("Failed to show notification: %s" % err)
