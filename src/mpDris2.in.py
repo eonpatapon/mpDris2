@@ -250,7 +250,7 @@ class MPDWrapper(object):
         errors and similar
     """
 
-    def __init__(self, params):
+    def __init__(self, params, loop=None):
         self.client = mpd.MPDClient()
 
         self._dbus = dbus
@@ -281,6 +281,7 @@ class MPDWrapper(object):
         if self._params['mmkeys']:
             self.setup_mediakeys()
 
+        self._loop = loop
     def run(self):
         """
         Try to connect to MPD; retry every 5 seconds on failure.
@@ -995,7 +996,8 @@ class MPRISInterface(dbus.service.Object):
             except:
                 pid = None
             logger.info("Replaced by %s (PID %s)" % (new_owner, pid or "unknown"))
-            loop.quit()
+            if self._loop:
+                self._loop.quit()
 
     def acquire_name(self):
         self._bus_name = dbus.service.BusName(self._name,
@@ -1477,7 +1479,7 @@ if __name__ == '__main__':
     notification = NotifyWrapper(params)
 
     # Create wrapper to handle connection failures with MPD more gracefully
-    mpd_wrapper = MPDWrapper(params)
+    mpd_wrapper = MPDWrapper(params, loop=loop)
     mpd_wrapper.run()
 
     # Run idle loop
