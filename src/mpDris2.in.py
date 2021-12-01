@@ -105,8 +105,6 @@ defaults = {
     'cover_regex': r'^(album|cover|\.?folder|front).*\.(gif|jpeg|jpg|png)$',
 }
 
-notification = None
-
 # MPRIS allowed metadata tags
 allowed_tags = {
     'mpris:trackid': dbus.ObjectPath,
@@ -282,6 +280,9 @@ class MPDWrapper(object):
             self.setup_mediakeys()
 
         self._loop = loop
+        # Wrapper to send notifications
+        self._notification = NotifyWrapper(self._params)
+
     def run(self):
         """
         Try to connect to MPD; retry every 5 seconds on failure.
@@ -324,7 +325,7 @@ class MPDWrapper(object):
                 self._can_single = True
 
             if self._errors > 0:
-                notification.notify(identity, _('Reconnected'))
+                self._notification.notify(identity, _('Reconnected'))
                 logger.info('Reconnected to MPD server.')
             else:
                 logger.debug('Connected to MPD server.')
@@ -375,7 +376,7 @@ class MPDWrapper(object):
 
     def reconnect(self):
         logger.warning("Disconnected")
-        notification.notify(identity, _('Disconnected'), 'error')
+        self._notification.notify(identity, _('Disconnected'), 'error')
 
         # Release the DBus name and disconnect from bus
         if self._dbus_service is not None:
@@ -608,11 +609,11 @@ class MPDWrapper(object):
             uri = 'media-playback-pause-symbolic'
             body += ' (%s)' % _('Paused')
 
-        notification.notify(title, body, uri)
+        self._notification.notify(title, body, uri)
 
     def notify_about_state(self, state):
         if state == 'stop':
-            notification.notify(identity, _('Stopped'), 'media-playback-stop-symbolic')
+            self._notification.notify(identity, _('Stopped'), 'media-playback-stop-symbolic')
         else:
             self.notify_about_track(self.metadata, state)
 
@@ -1477,9 +1478,6 @@ if __name__ == '__main__':
     else:
         logger.debug('Using legacy pygobject2 main loop.')
     loop = GLib.MainLoop()
-
-    # Wrapper to send notifications
-    notification = NotifyWrapper(params)
 
     # Create wrapper to handle connection failures with MPD more gracefully
     mpd_wrapper = MPDWrapper(params, loop=loop)
