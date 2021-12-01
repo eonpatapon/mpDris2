@@ -333,7 +333,7 @@ class MPDWrapper(object):
             self.client._sock.settimeout(5.0)
             # Export our DBUS service
             if not self._dbus_service:
-                self._dbus_service = MPRISInterface(self._params)
+                self._dbus_service = MPRISInterface(self._params, mpd_wrapper=self)
             else:
                 # Add our service to the session bus
                 #self._dbus_service.add_to_connection(dbus.SessionBus(),
@@ -970,14 +970,17 @@ class MPRISInterface(dbus.service.Object):
     __path = "/org/mpris/MediaPlayer2"
     __introspect_interface = "org.freedesktop.DBus.Introspectable"
     __prop_interface = dbus.PROPERTIES_IFACE
+    __wrapper = None
 
-    def __init__(self, params):
+    def __init__(self, params, mpd_wrapper=None):
         dbus.service.Object.__init__(self, dbus.SessionBus(),
                                      MPRISInterface.__path)
         self._params = params or {}
         self._name = self._params["bus_name"] or "org.mpris.MediaPlayer2.mpd"
         if not self._name.startswith("org.mpris.MediaPlayer2."):
             logger.warn("Configured bus name %r is outside MPRIS2 namespace" % self._name)
+
+        MPRISInterface.__wrapper = mpd_wrapper
 
         self._bus = dbus.SessionBus()
         self._uname = self._bus.get_unique_name()
@@ -1021,29 +1024,29 @@ class MPRISInterface(dbus.service.Object):
     }
 
     def __get_playback_status():
-        status = mpd_wrapper.last_status()
+        status = MPRISInterface.__wrapper.last_status()
         return {'play': 'Playing', 'pause': 'Paused', 'stop': 'Stopped'}[status['state']]
 
     def __set_loop_status(value):
         if value == "Playlist":
-            mpd_wrapper.repeat(1)
-            if mpd_wrapper._can_single:
-                mpd_wrapper.single(0)
+            MPRISInterface.__wrapper.repeat(1)
+            if MPRISInterface.__wrapper._can_single:
+                MPRISInterface.__wrapper.single(0)
         elif value == "Track":
-            if mpd_wrapper._can_single:
-                mpd_wrapper.repeat(1)
-                mpd_wrapper.single(1)
+            if MPRISInterface.__wrapper._can_single:
+                MPRISInterface.__wrapper.repeat(1)
+                MPRISInterface.__wrapper.single(1)
         elif value == "None":
-            mpd_wrapper.repeat(0)
-            if mpd_wrapper._can_single:
-                mpd_wrapper.single(0)
+            MPRISInterface.__wrapper.repeat(0)
+            if MPRISInterface.__wrapper._can_single:
+                MPRISInterface.__wrapper.single(0)
         else:
             raise dbus.exceptions.DBusException("Loop mode %r not supported" %
                                                 value)
         return
 
     def __get_loop_status():
-        status = mpd_wrapper.last_status()
+        status = MPRISInterface.__wrapper.last_status()
         if int(status['repeat']) == 1:
             if int(status.get('single', 0)) == 1:
                 return "Track"
@@ -1053,20 +1056,20 @@ class MPRISInterface(dbus.service.Object):
             return "None"
 
     def __set_shuffle(value):
-        mpd_wrapper.random(value)
+        MPRISInterface.__wrapper.random(value)
         return
 
     def __get_shuffle():
-        if int(mpd_wrapper.last_status()['random']) == 1:
+        if int(MPRISInterface.__wrapper.last_status()['random']) == 1:
             return True
         else:
             return False
 
     def __get_metadata():
-        return dbus.Dictionary(mpd_wrapper.metadata, signature='sv')
+        return dbus.Dictionary(MPRISInterface.__wrapper.metadata, signature='sv')
 
     def __get_volume():
-        vol = float(mpd_wrapper.last_status().get('volume', 0))
+        vol = float(MPRISInterface.__wrapper.last_status().get('volume', 0))
         if vol > 0:
             return vol / 100.0
         else:
@@ -1074,11 +1077,11 @@ class MPRISInterface(dbus.service.Object):
 
     def __set_volume(value):
         if value >= 0 and value <= 1:
-            mpd_wrapper.setvol(int(value * 100))
+            MPRISInterface.__wrapper.setvol(int(value * 100))
         return
 
     def __get_position():
-        status = mpd_wrapper.last_status()
+        status = MPRISInterface.__wrapper.last_status()
         if 'time' in status:
             current, end = status['time'].split(':')
             return dbus.Int64((int(current) * 1000000))
@@ -1168,46 +1171,46 @@ class MPRISInterface(dbus.service.Object):
     # Player methods
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Next(self):
-        mpd_wrapper.next()
+        MPRISInterface.__wrapper.next()
         return
 
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Previous(self):
-        mpd_wrapper.previous()
+        MPRISInterface.__wrapper.previous()
         return
 
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Pause(self):
-        mpd_wrapper.pause(1)
-        mpd_wrapper.notify_about_state('pause')
+        MPRISInterface.__wrapper.pause(1)
+        MPRISInterface.__wrapper.notify_about_state('pause')
         return
 
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def PlayPause(self):
-        status = mpd_wrapper.status()
+        status = MPRISInterface.__wrapper.status()
         if status['state'] == 'play':
-            mpd_wrapper.pause(1)
-            mpd_wrapper.notify_about_state('pause')
+            MPRISInterface.__wrapper.pause(1)
+            MPRISInterface.__wrapper.notify_about_state('pause')
         else:
-            mpd_wrapper.play()
-            mpd_wrapper.notify_about_state('play')
+            MPRISInterface.__wrapper.play()
+            MPRISInterface.__wrapper.notify_about_state('play')
         return
 
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Stop(self):
-        mpd_wrapper.stop()
-        mpd_wrapper.notify_about_state('stop')
+        MPRISInterface.__wrapper.stop()
+        MPRISInterface.__wrapper.notify_about_state('stop')
         return
 
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Play(self):
-        mpd_wrapper.play()
-        mpd_wrapper.notify_about_state('play')
+        MPRISInterface.__wrapper.play()
+        MPRISInterface.__wrapper.notify_about_state('play')
         return
 
     @dbus.service.method(__player_interface, in_signature='x', out_signature='')
     def Seek(self, offset):
-        status = mpd_wrapper.status()
+        status = MPRISInterface.__wrapper.status()
         current, end = status['time'].split(':')
         current = int(current)
         end = int(end)
@@ -1216,20 +1219,20 @@ class MPRISInterface(dbus.service.Object):
             position = current + offset
             if position < 0:
                 position = 0
-            mpd_wrapper.seekid(int(status['songid']), position)
+            MPRISInterface.__wrapper.seekid(int(status['songid']), position)
             self.Seeked(position * 1000000)
         return
 
     @dbus.service.method(__player_interface, in_signature='ox', out_signature='')
     def SetPosition(self, trackid, position):
-        song = mpd_wrapper.last_currentsong()
+        song = MPRISInterface.__wrapper.last_currentsong()
         # FIXME: use real dbus objects
         if str(trackid) != '/org/mpris/MediaPlayer2/Track/%s' % song['id']:
             return
         # Convert position to seconds
         position = int(position) / 1000000
         if position <= int(song['time']):
-            mpd_wrapper.seekid(int(song['id']), position)
+            MPRISInterface.__wrapper.seekid(int(song['id']), position)
             self.Seeked(position * 1000000)
         return
 
