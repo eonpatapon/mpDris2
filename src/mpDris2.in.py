@@ -74,6 +74,9 @@ except ImportError:
 
 _ = gettext.gettext
 
+logger = logging.getLogger('mpDris2')
+logger.propagate = False
+
 identity = "Music Player Daemon"
 
 params = {
@@ -1367,8 +1370,6 @@ if __name__ == '__main__':
         usage(params)
         sys.exit()
 
-    logger = logging.getLogger('mpDris2')
-    logger.propagate = False
     logger.setLevel(log_level)
 
     # Attempt to configure systemd journal logging, if enabled
