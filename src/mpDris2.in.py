@@ -495,7 +495,9 @@ class MPDWrapper(object):
             self.notify_about_state('stop')
 
     def last_currentsong(self):
-        return self._currentsong.copy()
+        if self._currentsong:
+            return self._currentsong.copy()
+        return None
 
     @property
     def metadata(self):
@@ -507,8 +509,12 @@ class MPDWrapper(object):
         http://www.freedesktop.org/wiki/Specifications/mpris-spec/metadata
         """
 
-        mpd_meta = self.last_currentsong()
         self._metadata = {}
+
+        mpd_meta = self.last_currentsong()
+        if not mpd_meta:
+            logger.warning("Attempted to update metadata, but retrieved none")
+            return
 
         for tag in ('album', 'title'):
             if tag in mpd_meta:
@@ -1227,6 +1233,10 @@ class MPRISInterface(dbus.service.Object):
     @dbus.service.method(__player_interface, in_signature='ox', out_signature='')
     def SetPosition(self, trackid, position):
         song = MPRISInterface.__wrapper.last_currentsong()
+        song = mpd_wrapper.last_currentsong()
+        if not song:
+            logger.error("Failed to retrieve song position, can't seek")
+            return()
         # FIXME: use real dbus objects
         if str(trackid) != '/org/mpris/MediaPlayer2/Track/%s' % song['id']:
             return
