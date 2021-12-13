@@ -74,6 +74,9 @@ except ImportError:
 
 _ = gettext.gettext
 
+logger = logging.getLogger('mpDris2')
+logger.propagate = False
+
 identity = "Music Player Daemon"
 
 params = {
@@ -101,8 +104,6 @@ defaults = {
     # Library
     'cover_regex': r'^(album|cover|\.?folder|front).*\.(gif|jpeg|jpg|png)$',
 }
-
-notification = None
 
 # MPRIS allowed metadata tags
 allowed_tags = {
@@ -247,7 +248,7 @@ class MPDWrapper(object):
         errors and similar
     """
 
-    def __init__(self, params):
+    def __init__(self, params, loop=None):
         self.client = mpd.MPDClient()
 
         self._dbus = dbus
@@ -277,6 +278,10 @@ class MPDWrapper(object):
         self._bus = dbus.SessionBus()
         if self._params['mmkeys']:
             self.setup_mediakeys()
+
+        self._loop = loop
+        # Wrapper to send notifications
+        self._notification = NotifyWrapper(self._params)
 
     def run(self):
         """
@@ -320,7 +325,7 @@ class MPDWrapper(object):
                 self._can_single = True
 
             if self._errors > 0:
-                notification.notify(identity, _('Reconnected'))
+                self._notification.notify(identity, _('Reconnected'))
                 logger.info('Reconnected to MPD server.')
             else:
                 logger.debug('Connected to MPD server.')
@@ -329,7 +334,7 @@ class MPDWrapper(object):
             self.client._sock.settimeout(5.0)
             # Export our DBUS service
             if not self._dbus_service:
-                self._dbus_service = MPRISInterface(self._params)
+                self._dbus_service = MPRISInterface(self._params, mpd_wrapper=self)
             else:
                 # Add our service to the session bus
                 #self._dbus_service.add_to_connection(dbus.SessionBus(),
@@ -371,7 +376,7 @@ class MPDWrapper(object):
 
     def reconnect(self):
         logger.warning("Disconnected")
-        notification.notify(identity, _('Disconnected'), 'error')
+        self._notification.notify(identity, _('Disconnected'), 'error')
 
         # Release the DBus name and disconnect from bus
         if self._dbus_service is not None:
@@ -610,11 +615,11 @@ class MPDWrapper(object):
             uri = 'media-playback-pause-symbolic'
             body += ' (%s)' % _('Paused')
 
-        notification.notify(title, body, uri)
+        self._notification.notify(title, body, uri)
 
     def notify_about_state(self, state):
         if state == 'stop':
-            notification.notify(identity, _('Stopped'), 'media-playback-stop-symbolic')
+            self._notification.notify(identity, _('Stopped'), 'media-playback-stop-symbolic')
         else:
             self.notify_about_track(self.metadata, state)
 
@@ -972,14 +977,17 @@ class MPRISInterface(dbus.service.Object):
     __path = "/org/mpris/MediaPlayer2"
     __introspect_interface = "org.freedesktop.DBus.Introspectable"
     __prop_interface = dbus.PROPERTIES_IFACE
+    __wrapper = None
 
-    def __init__(self, params):
+    def __init__(self, params, mpd_wrapper=None):
         dbus.service.Object.__init__(self, dbus.SessionBus(),
                                      MPRISInterface.__path)
         self._params = params or {}
         self._name = self._params["bus_name"] or "org.mpris.MediaPlayer2.mpd"
         if not self._name.startswith("org.mpris.MediaPlayer2."):
             logger.warn("Configured bus name %r is outside MPRIS2 namespace" % self._name)
+
+        MPRISInterface.__wrapper = mpd_wrapper
 
         self._bus = dbus.SessionBus()
         self._uname = self._bus.get_unique_name()
@@ -998,7 +1006,8 @@ class MPRISInterface(dbus.service.Object):
             except:
                 pid = None
             logger.info("Replaced by %s (PID %s)" % (new_owner, pid or "unknown"))
-            loop.quit()
+            if self._loop:
+                self._loop.quit()
 
     def acquire_name(self):
         self._bus_name = dbus.service.BusName(self._name,
@@ -1022,29 +1031,29 @@ class MPRISInterface(dbus.service.Object):
     }
 
     def __get_playback_status():
-        status = mpd_wrapper.last_status()
+        status = MPRISInterface.__wrapper.last_status()
         return {'play': 'Playing', 'pause': 'Paused', 'stop': 'Stopped'}[status['state']]
 
     def __set_loop_status(value):
         if value == "Playlist":
-            mpd_wrapper.repeat(1)
-            if mpd_wrapper._can_single:
-                mpd_wrapper.single(0)
+            MPRISInterface.__wrapper.repeat(1)
+            if MPRISInterface.__wrapper._can_single:
+                MPRISInterface.__wrapper.single(0)
         elif value == "Track":
-            if mpd_wrapper._can_single:
-                mpd_wrapper.repeat(1)
-                mpd_wrapper.single(1)
+            if MPRISInterface.__wrapper._can_single:
+                MPRISInterface.__wrapper.repeat(1)
+                MPRISInterface.__wrapper.single(1)
         elif value == "None":
-            mpd_wrapper.repeat(0)
-            if mpd_wrapper._can_single:
-                mpd_wrapper.single(0)
+            MPRISInterface.__wrapper.repeat(0)
+            if MPRISInterface.__wrapper._can_single:
+                MPRISInterface.__wrapper.single(0)
         else:
             raise dbus.exceptions.DBusException("Loop mode %r not supported" %
                                                 value)
         return
 
     def __get_loop_status():
-        status = mpd_wrapper.last_status()
+        status = MPRISInterface.__wrapper.last_status()
         if int(status['repeat']) == 1:
             if int(status.get('single', 0)) == 1:
                 return "Track"
@@ -1054,20 +1063,20 @@ class MPRISInterface(dbus.service.Object):
             return "None"
 
     def __set_shuffle(value):
-        mpd_wrapper.random(value)
+        MPRISInterface.__wrapper.random(value)
         return
 
     def __get_shuffle():
-        if int(mpd_wrapper.last_status()['random']) == 1:
+        if int(MPRISInterface.__wrapper.last_status()['random']) == 1:
             return True
         else:
             return False
 
     def __get_metadata():
-        return dbus.Dictionary(mpd_wrapper.metadata, signature='sv')
+        return dbus.Dictionary(MPRISInterface.__wrapper.metadata, signature='sv')
 
     def __get_volume():
-        vol = float(mpd_wrapper.last_status().get('volume', 0))
+        vol = float(MPRISInterface.__wrapper.last_status().get('volume', 0))
         if vol > 0:
             return vol / 100.0
         else:
@@ -1075,11 +1084,11 @@ class MPRISInterface(dbus.service.Object):
 
     def __set_volume(value):
         if value >= 0 and value <= 1:
-            mpd_wrapper.setvol(int(value * 100))
+            MPRISInterface.__wrapper.setvol(int(value * 100))
         return
 
     def __get_position():
-        status = mpd_wrapper.last_status()
+        status = MPRISInterface.__wrapper.last_status()
         if 'time' in status:
             current, end = status['time'].split(':')
             return dbus.Int64((int(current) * 1000000))
@@ -1169,46 +1178,46 @@ class MPRISInterface(dbus.service.Object):
     # Player methods
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Next(self):
-        mpd_wrapper.next()
+        MPRISInterface.__wrapper.next()
         return
 
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Previous(self):
-        mpd_wrapper.previous()
+        MPRISInterface.__wrapper.previous()
         return
 
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Pause(self):
-        mpd_wrapper.pause(1)
-        mpd_wrapper.notify_about_state('pause')
+        MPRISInterface.__wrapper.pause(1)
+        MPRISInterface.__wrapper.notify_about_state('pause')
         return
 
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def PlayPause(self):
-        status = mpd_wrapper.status()
+        status = MPRISInterface.__wrapper.status()
         if status['state'] == 'play':
-            mpd_wrapper.pause(1)
-            mpd_wrapper.notify_about_state('pause')
+            MPRISInterface.__wrapper.pause(1)
+            MPRISInterface.__wrapper.notify_about_state('pause')
         else:
-            mpd_wrapper.play()
-            mpd_wrapper.notify_about_state('play')
+            MPRISInterface.__wrapper.play()
+            MPRISInterface.__wrapper.notify_about_state('play')
         return
 
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Stop(self):
-        mpd_wrapper.stop()
-        mpd_wrapper.notify_about_state('stop')
+        MPRISInterface.__wrapper.stop()
+        MPRISInterface.__wrapper.notify_about_state('stop')
         return
 
     @dbus.service.method(__player_interface, in_signature='', out_signature='')
     def Play(self):
-        mpd_wrapper.play()
-        mpd_wrapper.notify_about_state('play')
+        MPRISInterface.__wrapper.play()
+        MPRISInterface.__wrapper.notify_about_state('play')
         return
 
     @dbus.service.method(__player_interface, in_signature='x', out_signature='')
     def Seek(self, offset):
-        status = mpd_wrapper.status()
+        status = MPRISInterface.__wrapper.status()
         current, end = status['time'].split(':')
         current = int(current)
         end = int(end)
@@ -1217,12 +1226,13 @@ class MPRISInterface(dbus.service.Object):
             position = current + offset
             if position < 0:
                 position = 0
-            mpd_wrapper.seekid(int(status['songid']), position)
+            MPRISInterface.__wrapper.seekid(int(status['songid']), position)
             self.Seeked(position * 1000000)
         return
 
     @dbus.service.method(__player_interface, in_signature='ox', out_signature='')
     def SetPosition(self, trackid, position):
+        song = MPRISInterface.__wrapper.last_currentsong()
         song = mpd_wrapper.last_currentsong()
         if not song:
             logger.error("Failed to retrieve song position, can't seek")
@@ -1233,7 +1243,7 @@ class MPRISInterface(dbus.service.Object):
         # Convert position to seconds
         position = int(position) / 1000000
         if position <= int(song['time']):
-            mpd_wrapper.seekid(int(song['id']), position)
+            MPRISInterface.__wrapper.seekid(int(song['id']), position)
             self.Seeked(position * 1000000)
         return
 
@@ -1376,8 +1386,6 @@ if __name__ == '__main__':
         usage(params)
         sys.exit()
 
-    logger = logging.getLogger('mpDris2')
-    logger.propagate = False
     logger.setLevel(log_level)
 
     # Attempt to configure systemd journal logging, if enabled
@@ -1481,11 +1489,8 @@ if __name__ == '__main__':
         logger.debug('Using legacy pygobject2 main loop.')
     loop = GLib.MainLoop()
 
-    # Wrapper to send notifications
-    notification = NotifyWrapper(params)
-
     # Create wrapper to handle connection failures with MPD more gracefully
-    mpd_wrapper = MPDWrapper(params)
+    mpd_wrapper = MPDWrapper(params, loop=loop)
     mpd_wrapper.run()
 
     # Run idle loop
