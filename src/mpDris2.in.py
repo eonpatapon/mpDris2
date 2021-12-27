@@ -570,6 +570,12 @@ class MPDWrapper(object):
             else:
                 self._metadata['xesam:composer'] = [mpd_meta['composer']]
 
+        if 'genre' in mpd_meta:
+            if type(mpd_meta['genre']) == list:
+                self._metadata['xesam:genre'] = mpd_meta['genre']
+            else:
+                self._metadata['xesam:genre'] = [mpd_meta['genre']]
+
         # Stream: populate some missings tags with stream's name
         if 'name' in mpd_meta:
             if 'xesam:title' not in self._metadata:
