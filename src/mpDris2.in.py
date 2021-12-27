@@ -558,6 +558,12 @@ class MPDWrapper(object):
             else:
                 self._metadata['xesam:artist'] = [mpd_meta['artist']]
 
+        if 'albumartist' in mpd_meta:
+            if type(mpd_meta['albumartist']) == list:
+                self._metadata['xesam:albumArtist'] = mpd_meta['albumartist']
+            else:
+                self._metadata['xesam:albumArtist'] = [mpd_meta['albumartist']]
+
         if 'composer' in mpd_meta:
             if type(mpd_meta['composer']) == list:
                 self._metadata['xesam:composer'] = mpd_meta['composer']
