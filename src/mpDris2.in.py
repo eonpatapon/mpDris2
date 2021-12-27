@@ -54,17 +54,12 @@ except (ImportError, ValueError):
 from gi.repository import GLib
 
 using_gi_notify = False
-using_old_notify = False
 
 try:
     from gi.repository import Notify
     using_gi_notify = True
 except ImportError:
-    try:
-        import pynotify
-        using_old_notify = True
-    except ImportError:
-        pass
+    pass
 
 _ = gettext.gettext
 
@@ -82,7 +77,7 @@ params = {
     'cover_regex': None,
     # Bling
     'mmkeys': True,
-    'notify': (using_gi_notify or using_old_notify),
+    'notify': (using_gi_notify),
     'notify_urgency': 0,
 }
 
@@ -933,14 +928,6 @@ class NotifyWrapper(object):
                 notif = Notify.Notification()
                 notif.set_hint("desktop-entry", GLib.Variant("s", "mpdris2"))
                 notif.set_hint("transient", GLib.Variant("b", True))
-            else:
-                logger.error("Failed to init libnotify; disabling notifications")
-        elif using_old_notify:
-            logger.debug("Initializing old pynotify")
-            if pynotify.init(identity):
-                notif = pynotify.Notification("", "", "")
-                notif.set_hint("desktop-entry", "mpdris2")
-                notif.set_hint("transient", True)
             else:
                 logger.error("Failed to init libnotify; disabling notifications")
 
