@@ -19,26 +19,24 @@
 # Based on mpDris from: Erik Karlsson <pilo@ayeon.org>
 # Some bits taken from quodlibet mpris plugin by <christoph.reiter@gmx.at>
 
-
+import base64
 from configparser import ConfigParser
+import dbus
+from dbus.mainloop.glib import DBusGMainLoop
+import dbus.service
+import getopt
+import gettext
+import gi
+from gi.repository import GLib
+import logging
+import mpd
 import os
-import sys
 import re
 import shlex
 import socket
-import getopt
-import mpd
-import dbus
-import dbus.service
-from dbus.mainloop.glib import DBusGMainLoop
-import logging
-import gettext
-import time
+import sys
 import tempfile
-import base64
-
-__version__ = "@version@"
-__git_version__ = "@gitversion@"
+import time
 
 try:
     import mutagen
@@ -46,22 +44,15 @@ except ImportError:
     mutagen = None
 
 try:
-    import gi
     gi.require_version('Notify', '0.7')
-except (ImportError, ValueError):
-    pass
-
-from gi.repository import GLib
-
-using_gi_notify = False
-
-try:
     from gi.repository import Notify
-    using_gi_notify = True
-except ImportError:
-    pass
+except (ImportError, ValueError):
+    Notify = None
 
 _ = gettext.gettext
+
+__version__ = "@version@"
+__git_version__ = "@gitversion@"
 
 identity = "Music Player Daemon"
 
@@ -77,7 +68,7 @@ params = {
     'cover_regex': None,
     # Bling
     'mmkeys': True,
-    'notify': (using_gi_notify),
+    'notify': (Notify is not None),
     'notify_urgency': 0,
 }
 
@@ -922,7 +913,7 @@ class NotifyWrapper(object):
         notif = None
 
         # Bootstrap whatever notifications system we are using
-        if using_gi_notify:
+        if Notify is not None:
             logger.debug("Initializing GObject.Notify")
             if Notify.init(identity):
                 notif = Notify.Notification()
