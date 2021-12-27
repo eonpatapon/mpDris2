@@ -51,13 +51,7 @@ try:
 except (ImportError, ValueError):
     pass
 
-using_gi_glib = False
-
-try:
-    from gi.repository import GLib
-    using_gi_glib = True
-except ImportError:
-    import glib as GLib
+from gi.repository import GLib
 
 using_gi_notify = False
 using_old_notify = False
@@ -345,15 +339,10 @@ class MPDWrapper(object):
                 self._poll_id = GLib.timeout_add_seconds(interval,
                                                          self.timer_callback)
             if self._can_idle and not self._watch_id:
-                if using_gi_glib:
-                    self._watch_id = GLib.io_add_watch(self,
-                                                       GLib.PRIORITY_DEFAULT,
-                                                       GLib.IO_IN | GLib.IO_HUP,
-                                                       self.socket_callback)
-                else:
-                    self._watch_id = GLib.io_add_watch(self,
-                                                       GLib.IO_IN | GLib.IO_HUP,
-                                                       self.socket_callback)
+                self._watch_id = GLib.io_add_watch(self,
+                                                   GLib.PRIORITY_DEFAULT,
+                                                   GLib.IO_IN | GLib.IO_HUP,
+                                                   self.socket_callback)
             # Reset error counter
             self._errors = 0
 
@@ -1487,10 +1476,6 @@ if __name__ == '__main__':
         logger.info('Mutagen not available, covers in music files will be ignored.')
 
     # Set up the main loop
-    if using_gi_glib:
-        logger.debug('Using GObject-Introspection main loop.')
-    else:
-        logger.debug('Using legacy pygobject2 main loop.')
     loop = GLib.MainLoop()
 
     # Wrapper to send notifications
