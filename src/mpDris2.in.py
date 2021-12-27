@@ -840,6 +840,8 @@ class MPDWrapper(object):
     elif hasattr(mpd.MPDClient, "_writecommand"):
         def _write_command(self, *args):
             return self.client._writecommand(*args)
+    else:
+        raise Exception("Could not find the _write_command method in MPDClient")
 
     if hasattr(mpd.MPDClient, "_parse_objects_direct"):
         def _fetch_object(self):
@@ -853,6 +855,8 @@ class MPDWrapper(object):
     elif hasattr(mpd.MPDClient, "_getobject"):
         def _fetch_object(self):
             return self.client._getobject()
+    else:
+        raise Exception("Could not find the _fetch_object method in MPDClient")
 
     # We use _fetch_objects("changed") to receive unprompted idle events on
     # socket activity.
@@ -866,6 +870,8 @@ class MPDWrapper(object):
     elif hasattr(mpd.MPDClient, "_getobjects"):
         def _fetch_objects(self, *args):
             return self.client._getobjects(*args)
+    else:
+        raise Exception("Could not find the _fetch_objects method in MPDClient")
 
     # Wrapper to catch connection errors when calling mpd client methods.
 
