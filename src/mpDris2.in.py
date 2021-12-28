@@ -837,9 +837,6 @@ class MPDWrapper(object):
     if hasattr(mpd.MPDClient, "_write_command"):
         def _write_command(self, *args):
             return self.client._write_command(*args)
-    elif hasattr(mpd.MPDClient, "_writecommand"):
-        def _write_command(self, *args):
-            return self.client._writecommand(*args)
     else:
         raise Exception("Could not find the _write_command method in MPDClient")
 
@@ -852,9 +849,6 @@ class MPDWrapper(object):
     elif hasattr(mpd.MPDClient, "_fetch_object"):
         def _fetch_object(self):
             return self.client._fetch_object()
-    elif hasattr(mpd.MPDClient, "_getobject"):
-        def _fetch_object(self):
-            return self.client._getobject()
     else:
         raise Exception("Could not find the _fetch_object method in MPDClient")
 
@@ -863,13 +857,11 @@ class MPDWrapper(object):
 
     if hasattr(mpd.MPDClient, "_parse_objects_direct"):
         def _fetch_objects(self, *args):
-            return list(self.client._parse_objects_direct(self.client._read_lines(), *args))
+            return list(self.client._parse_objects_direct(self.client._read_lines(),
+                                                          *args))
     elif hasattr(mpd.MPDClient, "_fetch_objects"):
         def _fetch_objects(self, *args):
             return self.client._fetch_objects(*args)
-    elif hasattr(mpd.MPDClient, "_getobjects"):
-        def _fetch_objects(self, *args):
-            return self.client._getobjects(*args)
     else:
         raise Exception("Could not find the _fetch_objects method in MPDClient")
 
