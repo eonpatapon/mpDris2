@@ -50,3 +50,4 @@ Restart your session or mpDris2 after changing mpDris2.conf.
     [Bling]
     notify = False
     mmkeys = True
+    cdprev = True
