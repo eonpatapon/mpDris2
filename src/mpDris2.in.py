@@ -658,6 +658,16 @@ class MPDWrapper(object):
                         if pic.type == mutagen.id3.PictureType.COVER_FRONT:
                             self._temp_song_url = song_url
                             return self._create_temp_cover(pic)
+                elif song.tags and "covr" in song.tags:
+                    # MP4
+                    for data in song.get("covr", []):
+                        mimes = {mutagen.mp4.AtomDataType.JPEG: "image/jpeg",
+                                 mutagen.mp4.AtomDataType.PNG: "image/png"}
+
+                        pic = mutagen.id3.APIC(mime=mimes.get(data.imageformat, ""), data=data)
+
+                        self._temp_song_url = song_url
+                        return self._create_temp_cover(pic)
 
             # Look in song directory for common album cover files
             if os.path.exists(song_dir) and os.path.isdir(song_dir):
