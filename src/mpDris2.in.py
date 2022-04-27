@@ -628,6 +628,12 @@ class MPDWrapper(object):
                 except mutagen.MutagenError as e:
                     logger.error("Can't extract covers from %r: %r" % (song_path, e))
             if song is not None:
+                if hasattr(song, "pictures"):
+                    # FLAC
+                    for pic in song.pictures:
+                        if pic.type == mutagen.id3.PictureType.COVER_FRONT:
+                            self._temp_song_url = song_url
+                            return self._create_temp_cover(pic)
                 if song.tags:
                     # present but null for some file types
                     for tag in song.tags.keys():
@@ -636,38 +642,32 @@ class MPDWrapper(object):
                                 if pic.type == mutagen.id3.PictureType.COVER_FRONT:
                                      self._temp_song_url = song_url
                                      return self._create_temp_cover(pic)
-                if hasattr(song, "pictures"):
-                    # FLAC
-                    for pic in song.pictures:
-                        if pic.type == mutagen.id3.PictureType.COVER_FRONT:
-                            self._temp_song_url = song_url
-                            return self._create_temp_cover(pic)
-                elif song.tags and 'metadata_block_picture' in song.tags:
-                    # OGG
-                    for b64_data in song.get("metadata_block_picture", []):
-                        try:
-                            data = base64.b64decode(b64_data)
-                        except (TypeError, ValueError):
-                            continue
+                        elif tag == "metadata_block_picture":
+                            # OGG
+                            for b64_data in song.get(tag, []):
+                                try:
+                                    data = base64.b64decode(b64_data)
+                                except (TypeError, ValueError):
+                                    continue
 
-                        try:
-                            pic = mutagen.flac.Picture(data)
-                        except mutagen.flac.error:
-                            continue
+                                try:
+                                    pic = mutagen.flac.Picture(data)
+                                except mutagen.flac.error:
+                                    continue
 
-                        if pic.type == mutagen.id3.PictureType.COVER_FRONT:
-                            self._temp_song_url = song_url
-                            return self._create_temp_cover(pic)
-                elif song.tags and "covr" in song.tags:
-                    # MP4
-                    for data in song.get("covr", []):
-                        mimes = {mutagen.mp4.AtomDataType.JPEG: "image/jpeg",
-                                 mutagen.mp4.AtomDataType.PNG: "image/png"}
+                                if pic.type == mutagen.id3.PictureType.COVER_FRONT:
+                                    self._temp_song_url = song_url
+                                    return self._create_temp_cover(pic)
+                        elif tag == "covr":
+                            # MP4
+                            for data in song.get(tag, []):
+                                mimes = {mutagen.mp4.AtomDataType.JPEG: "image/jpeg",
+                                         mutagen.mp4.AtomDataType.PNG: "image/png"}
 
-                        pic = mutagen.id3.APIC(mime=mimes.get(data.imageformat, ""), data=data)
+                                pic = mutagen.id3.APIC(mime=mimes.get(data.imageformat, ""), data=data)
 
-                        self._temp_song_url = song_url
-                        return self._create_temp_cover(pic)
+                                self._temp_song_url = song_url
+                                return self._create_temp_cover(pic)
 
             # Look in song directory for common album cover files
             if os.path.exists(song_dir) and os.path.isdir(song_dir):
