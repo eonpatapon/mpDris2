@@ -71,6 +71,7 @@ params = {
     'mmkeys': True,
     'notify': (Notify is not None),
     'notify_urgency': 0,
+    'cdprev': False,
 }
 
 defaults = {
@@ -889,6 +890,12 @@ class MPDWrapper(object):
             raise AttributeError(attr)
         return lambda *a, **kw: self.call(attr, *a, **kw)
 
+    def previous(self):
+        if self._params['cdprev'] and self._position >= 3:
+            self.seekid(int(self._status['songid']), 0)
+        else:
+            self.call("previous")
+
     def call(self, command, *args):
         fn = getattr(self.client, command)
         try:
@@ -1425,7 +1432,7 @@ if __name__ == '__main__':
 
     params['host'] = os.path.expanduser(params['host'])
 
-    for p in ['mmkeys', 'notify']:
+    for p in ['mmkeys', 'notify', 'cdprev']:
         if config.has_option('Bling', p):
             params[p] = config.getboolean('Bling', p)
 
