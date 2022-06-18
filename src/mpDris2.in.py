@@ -1076,7 +1076,7 @@ class MPRISInterface(dbus.service.Object):
 
     def __set_volume(value):
         if value >= 0 and value <= 1:
-            mpd_wrapper.setvol(int(value * 100))
+            mpd_wrapper.setvol(round(value * 100))
         return
 
     def __get_position():
