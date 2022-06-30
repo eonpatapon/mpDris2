@@ -70,8 +70,15 @@ params = {
     # Bling
     'mmkeys': True,
     'notify': (Notify is not None),
-    'notify_urgency': 0,
-    'cdprev': False,
+    "notify_paused": False,
+    "cdprev": False,
+    # Notify
+    "summary": "",
+    "body": "",
+    "paused_summary": "",
+    "paused_body": "",
+    "urgency": 0,
+    "timeout": -1,
 }
 
 defaults = {
@@ -578,27 +585,73 @@ class MPDWrapper(object):
                 logger.error("Can't cast value %r to %s" %
                              (value, allowed_tags[key]))
 
-    def notify_about_track(self, meta, state='play'):
-        uri = 'sound'
-        if 'mpris:artUrl' in meta:
-            uri = meta['mpris:artUrl']
+    def convert_timestamp(self, secs, micros=0):
+        seconds, minutes, hours = 0, 0, 0
 
-        title = 'Unknown Title'
-        if 'xesam:title' in meta:
-            title = meta['xesam:title']
-        elif 'xesam:url' in meta:
-            title = meta['xesam:url'].split('/')[-1]
+        if micros > 0:
+            secs += micros / 1000000
+        if secs > 0:
+            seconds = int(secs % 60)
+            minutes = int((secs / 60) % 60)
+            hours = int(secs / 3600)
 
-        artist = 'Unknown Artist'
-        if 'xesam:artist' in meta:
-            artist = ", ".join(meta['xesam:artist'])
+        if hours == 0:
+            duration = "{}:{:0>2}".format(minutes, seconds)
+        else:
+            duration = "{}:{:0>2}:{:0>2}".format(hours, minutes, seconds)
 
-        body = _('by %s') % artist
+        return duration
 
-        if state == 'pause':
-            uri = 'media-playback-pause-symbolic'
-            body += ' (%s)' % _('Paused')
+    def format_notification(self, meta, text):
+        """format '%property%' in a string for it's actual value"""
 
+        format_strings = {
+            "album": meta.get("xesam:album", "Unknown Album"),
+            "title": meta.get("xesam:title", "Unknown Title"),
+            "id": meta.get("mpris:trackid", "").split("/")[-1],
+            "time": self.convert_timestamp(0, meta.get("mpris:length", 0)),
+            "timeposition": self.convert_timestamp(self._position, 0),
+            "date": meta.get("xesam:contentCreated", ""),
+            "track": meta.get("xesam:trackNumber", ""),
+            "disc": meta.get("xesam:discNumber", ""),
+            "artist": ", ".join(meta.get("xesam:artist", ['Unknown Artist'])),
+            "albumartist": ", ".join(meta.get("xesam:albumArtist", [])),
+            "composer": meta.get("xesam:composer", ""),
+            "genre": ", ".join(meta.get("xesam:genre", [])),
+            "file": meta.get("xesam:url", "").split("/")[-1],
+        }
+        return re.sub(r'%([a-z]+)%', r'{\1}', text).format_map(format_strings)
+
+    def notify_about_track(self, meta, state="play"):
+        uri = meta.get("mpris:artUrl", "sound")
+
+        if self._params["summary"]:
+            title = self.format_notification(meta, self._params["summary"])
+        elif "xesam:title" in meta:
+            title = meta["xesam:title"]
+        elif "xesam:url" in meta:
+            title = meta["xesam:url"].split("/")[-1]
+        else:
+            title = "Unknown Title"
+
+        if self._params["body"]:
+            body = self.format_notification(meta, self._params["body"])
+        else:
+            artist = ", ".join(meta.get("xesam:artist", ["Unknown Artist"]))
+            body = _("by %s") % artist
+
+        if state == "pause":
+            if not self._params["notify_paused"]:
+                return
+            uri = "media-playback-pause-symbolic"
+
+            if self._params["paused_summary"]:
+                title = self.format_notification(meta, self._params["paused_summary"])
+
+            if self._params["paused_body"]:
+                body = self.format_notification(meta, self._params["paused_body"])
+            else:
+                body += " (Paused)"
         notification.notify(title, body, uri)
 
     def notify_about_state(self, state):
@@ -949,7 +1002,7 @@ class NotifyWrapper(object):
     def notify(self, title, body, uri=''):
         if not self._enabled:
             return
-        
+
         # If we did not yet manage to get a notification service,
         # try again
         if not self._notification:
@@ -957,10 +1010,11 @@ class NotifyWrapper(object):
             self._notification = self._bootstrap_notifications()
             if self._notification:
                 logger.info('Notification service provider acquired!')
-        
+
         if self._notification:
             try:
-                self._notification.set_urgency(params['notify_urgency'])
+                self._notification.set_timeout(params['timeout'])
+                self._notification.set_urgency(params['urgency'])
                 self._notification.update(title, body, uri)
                 self._notification.show()
             except GLib.GError as err:
@@ -1432,12 +1486,30 @@ if __name__ == '__main__':
 
     params['host'] = os.path.expanduser(params['host'])
 
-    for p in ['mmkeys', 'notify', 'cdprev']:
-        if config.has_option('Bling', p):
-            params[p] = config.getboolean('Bling', p)
+    for p in ["mmkeys", "notify", "notify_paused", "cdprev"]:
+        if config.has_option("Bling", p):
+            params[p] = config.getboolean("Bling", p)
 
-    if config.has_option('Bling', 'notify_urgency'):
-        params['notify_urgency'] = int(config.get('Bling', 'notify_urgency'))
+    if config.has_option("Notify", "summary"):
+        params["summary"] = config.get("Notify", "summary", raw=True)
+
+    if config.has_option("Notify", "body"):
+        params["body"] = config.get("Notify", "body", raw=True)
+
+    if config.has_option("Notify", "paused_summary"):
+        params["paused_summary"] = config.get("Notify", "paused_summary", raw=True)
+
+    if config.has_option("Notify", "paused_body"):
+        params["paused_body"] = config.get("Notify", "paused_body", raw=True)
+
+    if config.has_option("Notify", "timeout"):
+        params["timeout"] = config.getint("Notify", "timeout")
+
+    if config.has_option("Notify", "urgency"):
+        params["urgency"] = config.getint("Notify", "urgency")
+    elif config.has_option("Bling", "notify_urgency"):
+        params["urgency"] = config.getint("Bling", "notify_urgency")
+        logger.warning("Use of 'notify_urgency' is deprecated. Please use 'urgency' under the 'Notify' section.")
 
     if not music_dir:
         if config.has_option('Library', 'music_dir'):
