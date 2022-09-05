@@ -71,6 +71,7 @@ params = {
     'mmkeys': True,
     'notify': (Notify is not None),
     "notify_paused": False,
+    "pause_icon": "media-playback-pause-symbolic",
     "cdprev": False,
     # Notify
     "summary": "",
@@ -643,7 +644,7 @@ class MPDWrapper(object):
         if state == "pause":
             if not self._params["notify_paused"]:
                 return
-            uri = "media-playback-pause-symbolic"
+            uri = self._params["pause_icon"] or uri
 
             if self._params["paused_summary"]:
                 title = self.format_notification(meta, self._params["paused_summary"])
@@ -1489,6 +1490,9 @@ if __name__ == '__main__':
     for p in ["mmkeys", "notify", "notify_paused", "cdprev"]:
         if config.has_option("Bling", p):
             params[p] = config.getboolean("Bling", p)
+
+    if config.has_option("Bling", "pause_icon"):
+        params["pause_icon"] = config.get("Bling", "pause_icon")
 
     if config.has_option("Notify", "summary"):
         params["summary"] = config.get("Notify", "summary", raw=True)
