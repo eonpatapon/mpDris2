@@ -35,8 +35,8 @@ To set a different host or port copy the example configuration file
 Use the configuration to enable notifications and multimedia keys support (on
 the GNOME desktop).
 
-You need also to set the ``music_dir`` option for mpDris2 to export covers
-paths in the MPRIS metadata.
+You need also to set the ``music_dir`` option and have the Python ``mutagen``
+module installed for mpDris2 to export covers paths in the MPRIS metadata.
 
 Restart your session or mpDris2 after changing mpDris2.conf.
 
