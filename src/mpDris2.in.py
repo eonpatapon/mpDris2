@@ -64,6 +64,7 @@ params = {
     'port': None,
     'password': None,
     'bus_name': None,
+    'reconnect': True,
     # Library
     'music_dir': '',
     'cover_regex': None,
@@ -242,6 +243,7 @@ class MPDWrapper(object):
         self._dbus = dbus
         self._params = params
         self._dbus_service = None
+        self._should_reconnect = params['reconnect']
 
         self._can_single = False
         self._can_idle = False
@@ -328,8 +330,10 @@ class MPDWrapper(object):
             # Init internal state to throw events at start
             self.init_state()
 
-            # Add periodic status check for sending MPRIS events
-            if not self._poll_id:
+            # If idle is not available, add periodic status check for sending MPRIS events
+            # Otherwise the timer will connect the socket if disconnected
+            # If reconnection is not necessary and idle is supported, this timer isn't enabled.
+            if not self._poll_id and (not self._can_idle or self._should_reconnect):
                 interval = 15 if self._can_idle else 1
                 self._poll_id = GLib.timeout_add_seconds(interval,
                                                          self.timer_callback)
@@ -436,13 +440,27 @@ class MPDWrapper(object):
 
     def socket_callback(self, fd, event):
         logger.debug("Socket event %r on fd %r" % (event, fd))
-        if event & GLib.IO_HUP:
-            self.reconnect()
+
+        def handle_disconnect():
+            if self._should_reconnect:
+                self.reconnect()
+            else:
+                logger.debug("Not reconnecting, quitting main loop")
+                loop.quit()
             return True
+
+        if event & GLib.IO_HUP:
+            return handle_disconnect()
+
         elif event & GLib.IO_IN:
             if self._idling:
                 self._idling = False
-                data = fd._fetch_objects("changed")
+
+                try:
+                    data = fd._fetch_objects("changed")
+                except mpd.base.ConnectionError:
+                    return handle_disconnect()
+
                 logger.debug("Idle events: %r" % data)
                 updated = False
                 for item in data:
@@ -1394,6 +1412,7 @@ if __name__ == '__main__':
                                      ['help', 'bus-name=', 'config=',
                                       'debug', 'host=', 'music-dir=',
                                       'use-journal', 'path=', 'port=',
+                                      'no-reconnect',
                                       'version'])
     except getopt.GetoptError as ex:
         (msg, opt) = ex.args
@@ -1420,6 +1439,8 @@ if __name__ == '__main__':
             music_dir = arg
         elif opt in ['--port']:
             params['port'] = int(arg)
+        elif opt in ['--no-reconnect']:
+            params['reconnect'] = False
         elif opt in ['-v', '--version']:
             v = __version__
             if __git_version__:
@@ -1564,9 +1585,10 @@ if __name__ == '__main__':
         logger.debug('Caught SIGINT, exiting.')
 
     # Clean up
-    try:
-        mpd_wrapper.client.close()
-        mpd_wrapper.client.disconnect()
-        logger.debug('Exiting')
-    except mpd.ConnectionError:
-        logger.error('Failed to disconnect properly')
+    if mpd_wrapper.connected:
+        try:
+            mpd_wrapper.client.close()
+            mpd_wrapper.client.disconnect()
+            logger.debug('Exiting')
+        except mpd.ConnectionError:
+            logger.error('Failed to disconnect properly')
