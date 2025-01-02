@@ -65,6 +65,7 @@ params = {
     'password': None,
     'bus_name': None,
     'reconnect': True,
+    'clean_exit': True,
     # Library
     'music_dir': '',
     'cover_regex': None,
@@ -244,6 +245,7 @@ class MPDWrapper(object):
         self._params = params
         self._dbus_service = None
         self._should_reconnect = params['reconnect']
+        self._disconnect_exit_code = 0 if params['clean_exit'] else 1
 
         self._can_single = False
         self._can_idle = False
@@ -447,6 +449,7 @@ class MPDWrapper(object):
             else:
                 logger.debug("Not reconnecting, quitting main loop")
                 loop.quit()
+                sys.exit(self._disconnect_exit_code)
             return True
 
         if event & GLib.IO_HUP:
@@ -1379,15 +1382,19 @@ def usage(params):
     print("""\
 Usage: %(progname)s [OPTION]...
 
-     -c, --config=PATH      Read a custom configuration file
+     -c, --config=PATH         Read a custom configuration file
 
-     -h, --host=ADDR        Set the mpd server address
-         --port=PORT        Set the TCP port
-         --music-dir=PATH   Set the music library path
+     -h, --host=ADDR           Set the mpd server address
+         --port=PORT           Set the TCP port
+         --music-dir=PATH      Set the music library path
 
-     -d, --debug            Run in debug mode
-     -j, --use-journal      Log to systemd journal instead of stderr
-     -v, --version          mpDris2 version
+     -d, --debug               Run in debug mode
+     -j, --use-journal         Log to systemd journal instead of stderr
+         --no-reconnect        Don't attempt to reconnect automatically,
+                               just exit on disconnect.
+         --abort-on-disconnect Exit abnormally when disconnected. Use
+                               with --no-reconnect.
+     -v, --version             mpDris2 version
 
 Environment variables MPD_HOST and MPD_PORT can be used.
 
@@ -1412,7 +1419,7 @@ if __name__ == '__main__':
                                      ['help', 'bus-name=', 'config=',
                                       'debug', 'host=', 'music-dir=',
                                       'use-journal', 'path=', 'port=',
-                                      'no-reconnect',
+                                      'no-reconnect', 'abort-on-disconnect',
                                       'version'])
     except getopt.GetoptError as ex:
         (msg, opt) = ex.args
@@ -1441,6 +1448,8 @@ if __name__ == '__main__':
             params['port'] = int(arg)
         elif opt in ['--no-reconnect']:
             params['reconnect'] = False
+        elif opt in ['--abort-on-disconnect']:
+            params['clean_exit'] = False
         elif opt in ['-v', '--version']:
             v = __version__
             if __git_version__:
