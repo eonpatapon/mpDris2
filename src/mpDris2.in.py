@@ -273,11 +273,16 @@ class MPDWrapper(object):
 
     def run(self):
         """
-        Try to connect to MPD; retry every 5 seconds on failure.
+        Try to connect to MPD
         """
         if self.my_connect():
-            GLib.timeout_add_seconds(5, self.my_connect)
-            return False
+            if self._should_reconnect:
+                GLib.timeout_add_seconds(5, self.my_connect)
+                return False
+            else:
+                logger.debug("Initial connect failed. Not retrying.")
+                loop.quit()
+                sys.exit(self._disconnect_exit_code)
         else:
             return True
 
