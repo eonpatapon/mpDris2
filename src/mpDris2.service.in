@@ -2,6 +2,7 @@
 Description=mpDris2 - Music Player Daemon D-Bus bridge
 After=mpd.service
 BindsTo=mpd.service
+Conflicts=mpDris2-remote.service
 
 [Service]
 Restart=on-failure
