@@ -1012,10 +1012,15 @@ class NotifyWrapper(object):
                 notif = Notify.Notification()
                 notif.set_hint("desktop-entry", GLib.Variant("s", "mpdris2"))
                 notif.set_hint("transient", GLib.Variant("b", True))
+                notif.connect("closed", self._notification_closed)
             else:
                 logger.error("Failed to init libnotify; disabling notifications")
 
         return notif
+
+    def _notification_closed(self, data):
+        # Notification server might consider the old ID invalid
+        self._notification = self._bootstrap_notifications()
 
     def notify(self, title, body, uri=''):
         if not self._enabled:
