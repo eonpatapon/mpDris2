@@ -50,6 +50,7 @@ Restart your session or mpDris2 after changing mpDris2.conf.
     [Bling]
     notify = False
     notify_paused = True
+    pause_icon = media-playback-pause-symbolic
     mmkeys = True
     cdprev = True
 
