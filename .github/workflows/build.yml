@@ -74,7 +74,8 @@ jobs:
           path: dist/*.deb
           if-no-files-found: error
 
-  sdist:
+  build:
+    needs: [lint]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -82,17 +83,17 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install build deps
-        run: pip install build
-      - name: Build sdist
-        run: python -m build --sdist
+        run: pip install -e .[dev]
+      - name: Build sdist + wheel
+        run: make build
       - uses: actions/upload-artifact@v6
         with:
-          name: mpdris2-sdist
-          path: dist/*.tar.gz
+          name: mpdris2-dist
+          path: dist/*
           if-no-files-found: error
 
   release:
-    needs: [lint, deb, sdist]
+    needs: [lint, deb, build]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
@@ -104,22 +105,64 @@ jobs:
           path: dist/
       - uses: actions/download-artifact@v8
         with:
-          name: mpdris2-sdist
+          name: mpdris2-dist
           path: dist/
       - uses: softprops/action-gh-release@v3
         with:
           files: |
             dist/*.deb
             dist/*.tar.gz
+            dist/*.whl
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') }}
+
+  publish-to-testpypi:
+    name: Publish to TestPyPI
+    needs: [build]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/mpdris2
+    permissions:
+      id-token: write  # mandatory for trusted publishing
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: mpdris2-dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  publish-to-pypi:
+    name: Publish to PyPI
+    needs: [build]
+    # Final releases only; prereleases (rc/beta/alpha) stop at TestPyPI.
+    if: >-
+      startsWith(github.ref, 'refs/tags/v')
+      && !contains(github.ref_name, '-rc')
+      && !contains(github.ref_name, '-beta')
+      && !contains(github.ref_name, '-alpha')
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/mpdris2
+    permissions:
+      id-token: write  # mandatory for trusted publishing
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: mpdris2-dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
 
   notify-apt-repo:
     needs: release
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
-      - uses: peter-evans/repository-dispatch@v3
+      - uses: peter-evans/repository-dispatch@v4
         with:
           token: ${{ secrets.APT_REPO_TOKEN }}
           repository: b0bbywan/odio-apt-repo
