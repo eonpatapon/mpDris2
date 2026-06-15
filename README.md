@@ -59,6 +59,18 @@ explicitly only if you want it running before any client asks:
 systemctl --user enable --now mpDris2.service
 ```
 
+## From PyPI
+
+```sh
+pipx install mpdris2     # or: pip install --user mpdris2
+```
+
+This installs the `mpDris2` console script only — no systemd or D-Bus
+service files, unlike the `.deb`. To auto-start it, drop a user unit at
+`~/.config/systemd/user/mpDris2.service` (copy `data/user/mpDris2.service`)
+and `systemctl --user enable --now mpDris2.service`. The optional cover
+deps are `pipx install 'mpdris2[cover]'`.
+
 ## From git
 
 ```sh
@@ -68,7 +80,7 @@ pipx install .          # or: pip install --user .
 ```
 
 This installs the `mpDris2` console script into your `$PATH`. Start it
-from your desktop's autostart, or via a `systemctl --user` unit.
+via a `systemctl --user` unit.
 
 Tagged releases on GitHub also publish an sdist tarball
 (`mpdris2-X.Y.Z.tar.gz`) next to the `.deb`, installable with
