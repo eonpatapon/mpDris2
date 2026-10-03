@@ -1,0 +1,35 @@
+# Georgian translation for mpDris2.
+# Copyright (C) 2026 mpDris2 developers.
+# This file is distributed under the same license as the mpDris2 package.
+# Ekaterine Papava <papava.e@gtu.ge>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: mpDris2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-07-22 18:58+0200\n"
+"PO-Revision-Date: 2026-10-03 07:48+0200\n"
+"Last-Translator: Ekaterine Papava <papava.e@gtu.ge>\n"
+"Language-Team: Georgian <(nothing)>\n"
+"Language: ka\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 3.9\n"
+
+#: ../src/mpDris2.in.py:314
+msgid "Reconnected"
+msgstr "თავიდან დაკავშირებულია"
+
+#: ../src/mpDris2.in.py:362
+msgid "Disconnected"
+msgstr "გათიშულია"
+
+#: ../src/mpDris2.in.py:659
+#, python-format
+msgid "by %s"
+msgstr "%s-სგან"
+
+#: ../src/mpDris2.in.py:677
+msgid "Stopped"
+msgstr "გაჩერებულია"
