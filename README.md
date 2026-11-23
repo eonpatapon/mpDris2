@@ -8,7 +8,7 @@ mpDris2 is run in the user session and monitors a local or distant mpd server.
 
 ## Stable release
 
-Download the latest release at https://github.com/eonpatapon/mpDris2/releases
+Download the latest release at https://github.com/eonpatapon/mpDris2/tags
 
     tar zvxf mpDris2-X.X.tar.gz
     cd mpDris2-X.X
@@ -43,14 +43,21 @@ Restart your session or mpDris2 after changing mpDris2.conf.
 ## Sample configuration
 
     [Connection]
-    host = 192.168.1.5
+    host = localhost
     port = 6600
+
+    [Library]
+    # Local location of the music library
+    # used to find covers
     music_dir = /media/music/
 
     [Bling]
-    notify = False
+    # Send notification on status changes
+    notify = True
     notify_paused = True
+    # React to media keys
     mmkeys = True
+    # CD-like previous command: if playback is past 3 seconds, seek to the beginning
     cdprev = True
 
     [Notify]
