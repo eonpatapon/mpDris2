@@ -1,3 +1,19 @@
+mpDris2 v0.10.0 (November 23, 2026)
+
+ - Added --no-reconnect option
+
+ - Added pause notification settings
+
+ - Added optional cd-like previous behavior
+
+ - Added support for mp4 cover art
+
+ - Drop legacy pynotify module
+
+ - Drop legacy glib module
+
+ - Return album artist and genre metadata
+
 mpDris2 v0.9.1 (January 20, 2021)
 
  - Use journald when using systemd service
